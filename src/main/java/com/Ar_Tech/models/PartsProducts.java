@@ -46,5 +46,5 @@ public class PartsProducts {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
-    private User createdBy;
+    private UserEntity createdBy;
 }

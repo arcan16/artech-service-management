@@ -11,13 +11,13 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "UserEntity")
 @Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class UserEntity {
 
     @Id
     private Long id;
@@ -31,7 +31,7 @@ public class User {
     private String username;
 
     @Column(name = "password_hash", length = 255, nullable = false)
-    private String passwordHash;
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
@@ -47,4 +47,5 @@ public class User {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
 }

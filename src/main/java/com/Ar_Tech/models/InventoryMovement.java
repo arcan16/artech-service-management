@@ -1,8 +1,5 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.Warehouse;
-import com.Ar_Tech.models.PartsProducts;
-import com.Ar_Tech.models.User;
 import com.Ar_Tech.models.enums.MovementReferenceType;
 import com.Ar_Tech.models.enums.MovementType;
 import jakarta.persistence.*;
@@ -46,7 +43,7 @@ public class InventoryMovement {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = true)
-    private User createdBy;
+    private UserEntity createdBy;
 
     @Column(name = "created_by_snapshot", length = 150)
     private String createdBySnapshot;

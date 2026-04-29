@@ -1,7 +1,5 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.ServiceOrder;
-import com.Ar_Tech.models.User;
 import com.Ar_Tech.models.enums.ImageType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -36,7 +34,7 @@ public class ServiceOrderImage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "taken_by", nullable = true)
-    private User takenBy;
+    private UserEntity takenBy;
 
     @Column(name = "taken_by_snapshot", length = 150)
     private String takenBySnapshot;

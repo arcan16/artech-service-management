@@ -1,6 +1,5 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.User;
 import com.Ar_Tech.models.enums.AuditAction;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -21,7 +20,7 @@ public class AuditLog {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = true)
-    private User user;
+    private UserEntity user;
 
     @Column(name = "user_snapshot", length = 255)
     private String userSnapshot;

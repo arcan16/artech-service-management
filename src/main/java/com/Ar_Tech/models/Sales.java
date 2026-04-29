@@ -1,8 +1,6 @@
 package com.Ar_Tech.models;
 
 
-import com.Ar_Tech.models.Client;
-import com.Ar_Tech.models.User;
 import com.Ar_Tech.models.enums.SaleStatus;
 import com.Ar_Tech.models.enums.SaleType;
 import jakarta.persistence.*;
@@ -38,7 +36,7 @@ public class Sales {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @NotNull
-    private User user;
+    private UserEntity user;
 
     @Column(name = "total", precision = 10, scale = 2, nullable = false)
     @DecimalMin(value = "0.0")

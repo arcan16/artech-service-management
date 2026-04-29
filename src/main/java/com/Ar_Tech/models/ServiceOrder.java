@@ -42,7 +42,7 @@ public class ServiceOrder {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to")
-    private User assignedTo;
+    private UserEntity assignedTo;
 
     @Column(name = "received_at")
     private LocalDateTime receivedAt;
@@ -55,7 +55,7 @@ public class ServiceOrder {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
-    private User createdBy;
+    private UserEntity createdBy;
 
     @Column(name = "created_by_snapshot", length = 150)
     private String createdBySnapshot;

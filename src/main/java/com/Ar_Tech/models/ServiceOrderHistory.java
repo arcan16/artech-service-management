@@ -34,7 +34,7 @@ public class ServiceOrderHistory {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "changed_by")
-    private User changedBy;
+    private UserEntity changedBy;
 
     @Column(name = "changed_by_snapshot", length = 150)
     private String changedBySnapshot;
