@@ -1,8 +1,6 @@
 package com.Ar_Tech.models;
-import com.Ar_Tech.models.Client;
-import com.Ar_Tech.models.Sales;
-import com.Ar_Tech.models.enums.ReturnStatus;
-import com.Ar_Tech.models.enums.ReturnType;
+import com.Ar_Tech.models.enums.EReturnStatus;
+import com.Ar_Tech.models.enums.EReturnType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -36,11 +34,11 @@ public class Returns {
     @Enumerated(EnumType.STRING)
     @Column(name = "return_type", nullable = false)
     @NotNull
-    private ReturnType returnType;
+    private EReturnType returnType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private ReturnStatus status;
+    private EReturnStatus status;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
@@ -52,7 +50,7 @@ public class Returns {
     // Helper para flujo de negocio
     @Transient
     public boolean isPendingReview() {
-        return ReturnStatus.UNDER_REVIEW.equals(status) ||
-                (status == null && ReturnType.WARRANTY.equals(returnType));
+        return EReturnStatus.UNDER_REVIEW.equals(status) ||
+                (status == null && EReturnType.WARRANTY.equals(returnType));
     }
 }

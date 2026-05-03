@@ -1,7 +1,7 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.enums.MovementReferenceType;
-import com.Ar_Tech.models.enums.MovementType;
+import com.Ar_Tech.models.enums.EMovementReferenceType;
+import com.Ar_Tech.models.enums.EMovementType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,7 +25,7 @@ public class InventoryMovement {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "reference_type")
-    private MovementReferenceType referenceType;
+    private EMovementReferenceType referenceType;
 
     @Column(name = "reference_id")
     private Long referenceId;
@@ -36,7 +36,7 @@ public class InventoryMovement {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "movement_type", nullable = false)
-    private MovementType movementType;
+    private EMovementType movementType;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;

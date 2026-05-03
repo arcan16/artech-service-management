@@ -3,7 +3,7 @@ package com.Ar_Tech.infra.security.filters;
 import com.Ar_Tech.infra.errors.MyIntegrityValidation;
 import com.Ar_Tech.infra.security.utils.JwtUtils;
 import com.Ar_Tech.models.UserEntity;
-import com.Ar_Tech.models.enums.UserStatus;
+import com.Ar_Tech.models.enums.EUserStatus;
 import com.Ar_Tech.repositories.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,7 +14,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import tools.jackson.databind.ObjectMapper;
 
@@ -76,8 +75,8 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         UserEntity userEntity = userRepository.findByUsername(user.getUsername()).
                 orElseThrow(()-> new MyIntegrityValidation("El usuario no existe", 400));
 
-        if(!Objects.equals(userEntity.getUsername(), "") && (userEntity.getStatus().equals(UserStatus.INACTIVE) ||
-                (userEntity.getStatus().equals(UserStatus.DELETED)))){
+        if(!Objects.equals(userEntity.getUsername(), "") && (userEntity.getStatus().equals(EUserStatus.INACTIVE) ||
+                (userEntity.getStatus().equals(EUserStatus.DELETED)))){
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Usuario no disponible");
         }
 

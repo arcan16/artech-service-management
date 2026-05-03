@@ -1,7 +1,7 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.enums.UserRole;
-import com.Ar_Tech.models.enums.UserStatus;
+import com.Ar_Tech.models.enums.EUserRole;
+import com.Ar_Tech.models.enums.EUserStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,7 +25,7 @@ public class UserEntity {
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "id")
-    private Person person;
+    private PersonEntity person;
 
     @Column(name = "username", length = 50, nullable = false, unique = true)
     private String username;
@@ -35,11 +35,11 @@ public class UserEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private UserStatus status;
+    private EUserStatus status;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
-    private UserRole role;
+    private EUserRole role;
 
     @CreationTimestamp
     @Column(name = "created_at")

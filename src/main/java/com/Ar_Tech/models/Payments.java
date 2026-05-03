@@ -1,8 +1,5 @@
 package com.Ar_Tech.models;
-import com.Ar_Tech.models.Client;
-import com.Ar_Tech.models.ClientCredits;
-import com.Ar_Tech.models.Sales;
-import com.Ar_Tech.models.enums.PaymentMethod;
+import com.Ar_Tech.models.enums.EPaymentMethod;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -46,7 +43,7 @@ public class Payments {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)
     @NotNull
-    private PaymentMethod paymentMethod;
+    private EPaymentMethod paymentMethod;
 
     @Column(name = "reference", length = 100)
     private String reference;

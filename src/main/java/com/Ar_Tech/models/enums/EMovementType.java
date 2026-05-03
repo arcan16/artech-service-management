@@ -1,7 +1,6 @@
-
 package com.Ar_Tech.models.enums;
 
-public enum MovementReferenceType {
+public enum EMovementType {
     IN,
     OUT,
     ADJUSTMENT

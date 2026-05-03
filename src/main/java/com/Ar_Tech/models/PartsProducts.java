@@ -1,6 +1,6 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.enums.ItemType;
+import com.Ar_Tech.models.enums.EItemType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,7 +30,7 @@ public class PartsProducts {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "item_type", nullable = false)
-    private ItemType itemType;
+    private EItemType itemType;
 
     @Column(name = "price", precision = 10, scale = 2)
     private BigDecimal price;

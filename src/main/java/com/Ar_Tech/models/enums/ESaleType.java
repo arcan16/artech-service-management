@@ -1,6 +1,6 @@
 package com.Ar_Tech.models.enums;
 
-public enum SaleType {
+public enum ESaleType {
     CASH,
     CREDIT
 }

@@ -1,7 +1,5 @@
 package com.Ar_Tech.models;
-import com.Ar_Tech.models.Returns;
-import com.Ar_Tech.models.ServiceOrder;
-import com.Ar_Tech.models.enums.WarrantyResolution;
+import com.Ar_Tech.models.enums.EWarrantyResolution;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -29,7 +27,7 @@ public class WarrantyProcess {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "resolution")
-    private WarrantyResolution resolution;
+    private EWarrantyResolution resolution;
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;

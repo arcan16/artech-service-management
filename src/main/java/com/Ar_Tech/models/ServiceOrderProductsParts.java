@@ -1,8 +1,6 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.ServiceOrder;
-import com.Ar_Tech.models.PartsProducts;
-import com.Ar_Tech.models.enums.UsageType;
+import com.Ar_Tech.models.enums.EUsageType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -36,5 +34,5 @@ public class ServiceOrderProductsParts {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "usage_type")
-    private UsageType usageType;
+    private EUsageType usageType;
 }

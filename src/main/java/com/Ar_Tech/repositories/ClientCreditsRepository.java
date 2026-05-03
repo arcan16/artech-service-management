@@ -1,7 +1,7 @@
 package com.Ar_Tech.repositories;
 
 import com.Ar_Tech.models.ClientCredits;
-import com.Ar_Tech.models.enums.CreditStatus;
+import com.Ar_Tech.models.enums.ECreditStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,7 +12,7 @@ public interface ClientCreditsRepository extends JpaRepository<ClientCredits, Lo
 
     Page<ClientCredits> findByClientId(Long clientId, Pageable pageable);
     
-    Page<ClientCredits> findByStatus(CreditStatus status, Pageable pageable);
+    Page<ClientCredits> findByStatus(ECreditStatus status, Pageable pageable);
     
-    Page<ClientCredits> findByStatusAndTotalAmountGreaterThan(CreditStatus status, java.math.BigDecimal minAmount, Pageable pageable);
+    Page<ClientCredits> findByStatusAndTotalAmountGreaterThan(ECreditStatus status, java.math.BigDecimal minAmount, Pageable pageable);
 }

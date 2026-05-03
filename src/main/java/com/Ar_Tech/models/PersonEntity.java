@@ -1,6 +1,9 @@
 package com.Ar_Tech.models;
 
+import com.Ar_Tech.dto.persons.FullPersonDTO;
+import com.Ar_Tech.dto.persons.PersonDTO;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Person {
+public class PersonEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,4 +39,25 @@ public class Person {
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    public PersonEntity(PersonDTO personDTO) {
+        this.firstName = personDTO.firstName();
+        this.lastName = personDTO.lastName();
+        this.email = personDTO.email();
+        this.phone = personDTO.phone();
+    }
+
+    public void update(@Valid FullPersonDTO person) {
+        if(this.firstName != null)
+            this.firstName = person.firstName();
+
+        if(this.lastName != null)
+            this.lastName = person.lastName();
+
+        if(this.email != null)
+            this.email = person.email();
+
+        if(this.phone != null)
+            this.phone = person.phone();
+    }
 }

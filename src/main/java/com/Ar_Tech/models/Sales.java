@@ -1,8 +1,8 @@
 package com.Ar_Tech.models;
 
 
-import com.Ar_Tech.models.enums.SaleStatus;
-import com.Ar_Tech.models.enums.SaleType;
+import com.Ar_Tech.models.enums.ESaleStatus;
+import com.Ar_Tech.models.enums.ESaleType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -44,12 +44,12 @@ public class Sales {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private SaleStatus status;
+    private ESaleStatus status;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sale_type", nullable = false)
     @NotNull
-    private SaleType saleType;
+    private ESaleType saleType;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

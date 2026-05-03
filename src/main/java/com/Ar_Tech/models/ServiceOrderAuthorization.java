@@ -1,6 +1,6 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.enums.AuthorizationStatus;
+import com.Ar_Tech.models.enums.EAuthorizationStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,7 +32,7 @@ public class ServiceOrderAuthorization {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "authorization_status", nullable = false)
-    private AuthorizationStatus authorizationStatus;
+    private EAuthorizationStatus authorizationStatus;
 
     @Column(name = "authorized_at")
     private LocalDateTime authorizedAt;

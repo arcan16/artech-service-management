@@ -1,6 +1,6 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.enums.ImageType;
+import com.Ar_Tech.models.enums.EImageType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,7 +27,7 @@ public class ServiceOrderImage {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "image_type", nullable = false)
-    private ImageType imageType;
+    private EImageType imageType;
 
     @Column(name = "description", length = 255)
     private String description;

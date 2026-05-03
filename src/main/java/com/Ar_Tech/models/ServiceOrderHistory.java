@@ -1,7 +1,7 @@
 package com.Ar_Tech.models;
 
 
-import com.Ar_Tech.models.enums.ServiceOrderStatus;
+import com.Ar_Tech.models.enums.EServiceOrderStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,7 +27,7 @@ public class ServiceOrderHistory {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private ServiceOrderStatus status;
+    private EServiceOrderStatus status;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;

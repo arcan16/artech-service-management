@@ -1,7 +1,5 @@
 package com.Ar_Tech.models;
-import com.Ar_Tech.models.ServiceOrder;
-import com.Ar_Tech.models.PartsProducts;
-import com.Ar_Tech.models.enums.PartStatus;
+import com.Ar_Tech.models.enums.EPartStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -36,7 +34,7 @@ public class ServiceOrderParts {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private PartStatus status;
+    private EPartStatus status;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

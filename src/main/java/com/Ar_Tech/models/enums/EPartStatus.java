@@ -1,6 +1,6 @@
 package com.Ar_Tech.models.enums;
 
-public enum PartStatus {
+public enum EPartStatus {
     REQUESTED,
     ORDERED,
     RECEIVED,

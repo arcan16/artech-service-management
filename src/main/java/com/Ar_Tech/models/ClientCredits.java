@@ -1,7 +1,5 @@
 package com.Ar_Tech.models;
-import com.Ar_Tech.models.Client;
-import com.Ar_Tech.models.Sales;
-import com.Ar_Tech.models.enums.CreditStatus;
+import com.Ar_Tech.models.enums.ECreditStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -45,7 +43,7 @@ public class ClientCredits {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private CreditStatus status;
+    private ECreditStatus status;
 
     @Column(name = "due_date")
     private LocalDate dueDate;
@@ -57,7 +55,7 @@ public class ClientCredits {
     // Helpers para lógica de negocio
     @Transient
     public boolean isOverdue() {
-        return CreditStatus.OVERDUE.equals(status) ||
+        return ECreditStatus.OVERDUE.equals(status) ||
                 (dueDate != null && dueDate.isBefore(LocalDate.now()) && balance.compareTo(BigDecimal.ZERO) > 0);
     }
 

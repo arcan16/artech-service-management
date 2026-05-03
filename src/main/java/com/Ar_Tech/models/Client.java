@@ -24,7 +24,7 @@ public class Client {
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "id")
-    private Person person;
+    private PersonEntity person;
 
     @Column(name = "customer_code", length = 50)
     private String customerCode;

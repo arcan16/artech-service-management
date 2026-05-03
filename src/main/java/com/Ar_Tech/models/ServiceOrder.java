@@ -1,6 +1,6 @@
 package com.Ar_Tech.models;
 
-import com.Ar_Tech.models.enums.ServiceOrderStatus;
+import com.Ar_Tech.models.enums.EServiceOrderStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,7 +38,7 @@ public class ServiceOrder {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private ServiceOrderStatus status;
+    private EServiceOrderStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to")

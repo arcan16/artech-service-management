@@ -1,6 +1,6 @@
 package com.Ar_Tech.models.enums;
 
-public enum ReturnType {
+public enum EReturnType {
     WARRANTY,
     REFUND,
     EXCHANGE

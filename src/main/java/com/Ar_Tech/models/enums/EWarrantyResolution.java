@@ -1,6 +1,6 @@
 package com.Ar_Tech.models.enums;
 
-public enum WarrantyResolution {
+public enum EWarrantyResolution {
     REPAIRED,
     REPLACED,
     REFUNDED,
