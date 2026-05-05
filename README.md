@@ -19,6 +19,9 @@ In development
 
 Artech API is designed to manage the core operations of a technical service business, including customer management, repair orders, and device tracking.
 
+## 🎯 Purpose
+This project was created as part of a backend development portfolio to demonstrate skills in building scalable REST APIs using Spring Boot.
+
 ---
 
 ## ⚙️ Tech Stack
@@ -79,7 +82,7 @@ This API uses JWT (JSON Web Tokens) for securing endpoints.
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/artech-api.git
+git clone https://github.com/arcan16/artech-service-management.git
 cd artech-api
 mvn clean install
 ```
@@ -105,8 +108,7 @@ mvn spring-boot:run
 ---
 
 ## 🧪 Testing
-
-(To be added)
+Testing is currently in progress. Unit and integration tests will be added using JUnit and Mockito.
 
 ---
 
@@ -118,4 +120,5 @@ This project is licensed under the MIT License.
 
 ## 👨‍💻 Author
 
+Omar Paredes
 https://github.com/arcan16
