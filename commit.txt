@@ -1,0 +1,1876 @@
+commit 59ba706ead61399d7d073435a47c806d25abfc78
+Author: arcan16 <71904332+arcan16@users.noreply.github.com>
+Date:   Sun May 3 16:02:27 2026 -0600
+
+    Tasks completed: PersonController CRUD basic, AuditLogService, PersonService, validations>persons>create, validations>persons>update, dto>persons>FullPersonDTO, dto>persons>PersonDTO
+
+diff --git a/src/main/java/com/Ar_Tech/config/DataInitializer.java b/src/main/java/com/Ar_Tech/config/DataInitializer.java
+new file mode 100644
+index 0000000..b40ddb5
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/config/DataInitializer.java
+@@ -0,0 +1,59 @@
++package com.Ar_Tech.config;
++
++import com.Ar_Tech.models.PersonEntity;
++import com.Ar_Tech.models.UserEntity;
++import com.Ar_Tech.models.enums.EUserRole;
++import com.Ar_Tech.models.enums.EUserStatus;
++import com.Ar_Tech.repositories.PersonRepository;
++import com.Ar_Tech.repositories.UserRepository;
++import org.springframework.boot.CommandLineRunner;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.stereotype.Component;
++import org.springframework.transaction.annotation.Transactional;
++
++
++/**
++ * Inicializa datos esenciales al arranque de la aplicacion
++ *
++ * Este componente crea un usuario administrador por defecto
++ * en caso de que no existan usuarios registrados en la base de datos
++ *
++ * IMPORTANTE:
++ * - Solo debe ejecutarse en entornos controlados.
++ * - Se recomienda cambiar la contraseña en el primer login.
++ */
++@Component
++public class DataInitializer implements CommandLineRunner {
++
++    private final PersonRepository personRepository;
++    private final UserRepository userRepository;
++    private final PasswordEncoder passwordEncoder;
++
++    public DataInitializer(PersonRepository personRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
++        this.personRepository = personRepository;
++        this.userRepository = userRepository;
++        this.passwordEncoder = passwordEncoder;
++    }
++
++    @Override
++    @Transactional
++    public void run(String... args) throws Exception {
++        if(userRepository.count() == 0 && personRepository.count() == 0){
++            PersonEntity person = new PersonEntity();
++            person.setFirstName("Jhon");
++            person.setLastName("Doe");
++            person.setPhone("9999999999");
++
++            personRepository.save(person);
++
++            UserEntity admin = new UserEntity();
++            admin.setPerson(person);
++            admin.setUsername("admin");
++            admin.setPassword(passwordEncoder.encode("admin"));
++            admin.setRole(EUserRole.ADMIN);
++            admin.setStatus(EUserStatus.ACTIVE);
++
++            userRepository.save(admin);
++        }
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/controllers/PersonController.java b/src/main/java/com/Ar_Tech/controllers/PersonController.java
+new file mode 100644
+index 0000000..3d50711
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/controllers/PersonController.java
+@@ -0,0 +1,75 @@
++package com.Ar_Tech.controllers;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.services.PersonService;
++import jakarta.servlet.http.HttpServletRequest;
++import jakarta.validation.Valid;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
++import org.springframework.data.web.PageableDefault;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.access.prepost.PreAuthorize;
++import org.springframework.web.bind.annotation.*;
++import org.springframework.web.util.UriComponentsBuilder;
++
++import java.net.URI;
++import java.util.List;
++
++@RestController
++@RequestMapping("/persons")
++public class PersonController {
++
++    @Autowired
++    private PersonService personService;
++
++    @PostMapping
++    public ResponseEntity<?> create(@RequestBody @Valid PersonDTO personDTO,
++                                    UriComponentsBuilder uriComponentsBuilder,
++                                    HttpServletRequest request) {
++
++        FullPersonDTO personCreated = personService.create(personDTO, request);
++
++        URI url = uriComponentsBuilder.path("/persons/{id}").buildAndExpand(personCreated.id()).toUri();
++
++        return ResponseEntity.created(url).body(personCreated);
++    }
++
++    @PutMapping
++    public ResponseEntity<?> update(@RequestBody @Valid FullPersonDTO fullPersonDTO,
++                                    HttpServletRequest request) {
++
++        String message = personService.update(fullPersonDTO, request);
++
++        return ResponseEntity.ok().body("{\"message\":\""+message+"\"}");
++
++    }
++
++    @PreAuthorize("hasRole('ADMIN')")
++    @DeleteMapping("/{id}")
++    public ResponseEntity<?> delete(@PathVariable Long id, HttpServletRequest request){
++        personService.delete(id, request);
++
++        return ResponseEntity.ok().body("{\"message\":\"Registro eliminado correctamente\"}");
++    }
++
++    @GetMapping
++    @PreAuthorize("hasRole('ADMIN')")
++    public ResponseEntity<?> getAll(HttpServletRequest request, @PageableDefault(size = 10) Pageable page){
++
++        List<FullPersonDTO> personDTOList = personService.getAllData(page, request);
++
++        if(personDTOList.isEmpty())
++            return ResponseEntity.ok().body("{\"message\":\"Sin registros encontrados\"}");
++
++        return ResponseEntity.ok().body(personDTOList);
++    }
++
++    @GetMapping("/{id}")
++    public ResponseEntity<?> getById(@PathVariable Long id, HttpServletRequest request){
++        FullPersonDTO personData = personService.getSingleData(id, request);
++
++        return ResponseEntity.ok().body(personData);
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/dto/persons/FullPersonDTO.java b/src/main/java/com/Ar_Tech/dto/persons/FullPersonDTO.java
+new file mode 100644
+index 0000000..dfd2b2a
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/dto/persons/FullPersonDTO.java
+@@ -0,0 +1,18 @@
++package com.Ar_Tech.dto.persons;
++
++import com.Ar_Tech.models.PersonEntity;
++import jakarta.validation.constraints.NotNull;
++
++import java.time.LocalDateTime;
++
++public record FullPersonDTO(@NotNull Long id,
++                            String firstName,
++                            String lastName,
++                            String email,
++                            String phone,
++                            LocalDateTime createdAt) {
++    public FullPersonDTO(PersonEntity newPerson) {
++        this(newPerson.getId(), newPerson.getFirstName(), newPerson.getLastName(), newPerson.getEmail(),
++                newPerson.getPhone(), newPerson.getCreatedAt());
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/dto/persons/PersonDTO.java b/src/main/java/com/Ar_Tech/dto/persons/PersonDTO.java
+new file mode 100644
+index 0000000..40349fd
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/dto/persons/PersonDTO.java
+@@ -0,0 +1,32 @@
++package com.Ar_Tech.dto.persons;
++
++import jakarta.validation.constraints.Email;
++import jakarta.validation.constraints.NotBlank;
++import jakarta.validation.constraints.Pattern;
++import jakarta.validation.constraints.Size;
++import lombok.NonNull;
++
++import java.time.LocalDateTime;
++
++public record PersonDTO(@NonNull
++                        @NotBlank(message = "First name is required")
++                        @Size(max = 50, message = "First name must not exceed 50 characters")
++                        String firstName,
++
++                        @NonNull
++                        @NotBlank(message = "Last name is required")
++                        @Size(max = 50, message = "Last name must not exceed 50 characters")
++                        String lastName,
++
++                        @NonNull
++                        @NotBlank(message = "Email is required")
++                        @Email(message = "Email must be valid")
++                        @Size(max = 150, message = "Email must not exceed 150 characters")
++                        String email,
++
++                        @NonNull
++                        @NotBlank(message = "Phone is required")
++                        String phone,
++
++                        LocalDateTime createdAt) {
++}
+diff --git a/src/main/java/com/Ar_Tech/infra/errors/MyErrorHandler.java b/src/main/java/com/Ar_Tech/infra/errors/MyErrorHandler.java
+index dd72f09..48ae288 100644
+--- a/src/main/java/com/Ar_Tech/infra/errors/MyErrorHandler.java
++++ b/src/main/java/com/Ar_Tech/infra/errors/MyErrorHandler.java
+@@ -5,12 +5,25 @@ import org.springframework.validation.FieldError;
+ import org.springframework.web.bind.MethodArgumentNotValidException;
+ import org.springframework.web.bind.annotation.ExceptionHandler;
+ import org.springframework.web.bind.annotation.RestControllerAdvice;
++import tools.jackson.databind.ObjectMapper;
++import tools.jackson.databind.node.ObjectNode;
+ 
+ import java.util.List;
+ 
+ @RestControllerAdvice
+ public class MyErrorHandler {
+ 
++    @ExceptionHandler(MyIntegrityValidation.class)
++    public ResponseEntity<?> myIntegrityValidationExceptionHandler(MyIntegrityValidation exception){
++        ObjectMapper objectMapper = new ObjectMapper();
++        ObjectNode response = objectMapper.createObjectNode();
++
++        response.put("message", exception.getMessage());
++        response.put("status", 400);
++
++        return ResponseEntity.badRequest().body(response);
++    }
++
+     @ExceptionHandler(MethodArgumentNotValidException.class)
+     public ResponseEntity<?> myMethodArgumentNotValidException(MethodArgumentNotValidException e){
+         List<errors> errorsList = e.getFieldErrors().stream().map(errors::new).toList();
+diff --git a/src/main/java/com/Ar_Tech/infra/security/filters/JwtAuthenticationFilter.java b/src/main/java/com/Ar_Tech/infra/security/filters/JwtAuthenticationFilter.java
+index 0d2d109..0fe20d9 100644
+--- a/src/main/java/com/Ar_Tech/infra/security/filters/JwtAuthenticationFilter.java
++++ b/src/main/java/com/Ar_Tech/infra/security/filters/JwtAuthenticationFilter.java
+@@ -3,7 +3,7 @@ package com.Ar_Tech.infra.security.filters;
+ import com.Ar_Tech.infra.errors.MyIntegrityValidation;
+ import com.Ar_Tech.infra.security.utils.JwtUtils;
+ import com.Ar_Tech.models.UserEntity;
+-import com.Ar_Tech.models.enums.UserStatus;
++import com.Ar_Tech.models.enums.EUserStatus;
+ import com.Ar_Tech.repositories.UserRepository;
+ import jakarta.servlet.FilterChain;
+ import jakarta.servlet.ServletException;
+@@ -14,7 +14,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
+ import org.springframework.security.core.Authentication;
+ import org.springframework.security.core.AuthenticationException;
+ import org.springframework.security.core.userdetails.User;
+-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+ import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+ import tools.jackson.databind.ObjectMapper;
+ 
+@@ -76,8 +75,8 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
+         UserEntity userEntity = userRepository.findByUsername(user.getUsername()).
+                 orElseThrow(()-> new MyIntegrityValidation("El usuario no existe", 400));
+ 
+-        if(!Objects.equals(userEntity.getUsername(), "") && (userEntity.getStatus().equals(UserStatus.INACTIVE) ||
+-                (userEntity.getStatus().equals(UserStatus.DELETED)))){
++        if(!Objects.equals(userEntity.getUsername(), "") && (userEntity.getStatus().equals(EUserStatus.INACTIVE) ||
++                (userEntity.getStatus().equals(EUserStatus.DELETED)))){
+             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Usuario no disponible");
+         }
+ 
+diff --git a/src/main/java/com/Ar_Tech/infra/security/utils/JwtUtils.java b/src/main/java/com/Ar_Tech/infra/security/utils/JwtUtils.java
+index a234f94..090f327 100644
+--- a/src/main/java/com/Ar_Tech/infra/security/utils/JwtUtils.java
++++ b/src/main/java/com/Ar_Tech/infra/security/utils/JwtUtils.java
+@@ -1,13 +1,16 @@
+ package com.Ar_Tech.infra.security.utils;
+ 
++import com.Ar_Tech.models.UserEntity;
+ import com.Ar_Tech.repositories.UserRepository;
+ import io.jsonwebtoken.Claims;
+ import io.jsonwebtoken.Jws;
+ import io.jsonwebtoken.Jwts;
+ import io.jsonwebtoken.io.Decoders;
+ import io.jsonwebtoken.security.Keys;
++import jakarta.servlet.http.HttpServletRequest;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.beans.factory.annotation.Value;
++import org.springframework.security.core.userdetails.UsernameNotFoundException;
+ import org.springframework.stereotype.Service;
+ 
+ import javax.crypto.SecretKey;
+@@ -62,4 +65,17 @@ public class JwtUtils {
+         Jws<Claims> claimsJws = Jwts.parser().verifyWith(getSignature()).build().parseSignedClaims(token);
+         return claimsJws.getPayload();
+     }
++
++    public UserEntity getUserFromToken(String token){
++        String username = getUsernameFromToken(token);
++
++        return userRepository.findByUsername(username)
++                .orElseThrow(()-> new UsernameNotFoundException("El usuario indicado en el token no existe"));
++
++    }
++    public UserEntity getUserFromRequest(HttpServletRequest request) {
++        String tokenHeader = request.getHeader("Authorization");
++        String token = tokenHeader.substring(7);
++        return getUserFromToken(token);
++    }
+ }
+diff --git a/src/main/java/com/Ar_Tech/models/AuditLog.java b/src/main/java/com/Ar_Tech/models/AuditLog.java
+deleted file mode 100644
+index 9f30965..0000000
+--- a/src/main/java/com/Ar_Tech/models/AuditLog.java
++++ /dev/null
+@@ -1,49 +0,0 @@
+-package com.Ar_Tech.models;
+-
+-import com.Ar_Tech.models.enums.AuditAction;
+-import jakarta.persistence.*;
+-import lombok.AllArgsConstructor;
+-import lombok.Data;
+-import lombok.NoArgsConstructor;
+-import java.time.LocalDateTime;
+-
+-@Entity
+-@Table(name = "audit_log")
+-@Data
+-@NoArgsConstructor
+-@AllArgsConstructor
+-public class AuditLog {
+-
+-    @Id
+-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+-    private Long id;
+-
+-    @ManyToOne(fetch = FetchType.LAZY)
+-    @JoinColumn(name = "user_id", nullable = true)
+-    private UserEntity user;
+-
+-    @Column(name = "user_snapshot", length = 255)
+-    private String userSnapshot;
+-
+-    @Enumerated(EnumType.STRING)
+-    @Column(name = "action")
+-    private AuditAction action;
+-
+-    @Column(name = "table_name", length = 100)
+-    private String tableName;
+-
+-    @Column(name = "record_id")
+-    private Long recordId;
+-
+-    @Column(name = "old_values", columnDefinition = "JSON")
+-    private String oldValues;
+-
+-    @Column(name = "new_values", columnDefinition = "JSON")
+-    private String newValues;
+-
+-    @Column(name = "ip_address", length = 45)
+-    private String ipAddress;
+-
+-    @Column(name = "created_at")
+-    private LocalDateTime createdAt;
+-}
+diff --git a/src/main/java/com/Ar_Tech/models/AuditLogEntity.java b/src/main/java/com/Ar_Tech/models/AuditLogEntity.java
+new file mode 100644
+index 0000000..ca51995
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/models/AuditLogEntity.java
+@@ -0,0 +1,91 @@
++package com.Ar_Tech.models;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.models.enums.EAuditAction;
++import jakarta.persistence.*;
++import lombok.AllArgsConstructor;
++import lombok.Data;
++import lombok.NoArgsConstructor;
++import org.hibernate.annotations.CreationTimestamp;
++import tools.jackson.databind.ObjectMapper;
++
++import java.time.LocalDateTime;
++import java.util.List;
++
++@Entity
++@Table(name = "audit_log")
++@Data
++@NoArgsConstructor
++@AllArgsConstructor
++public class AuditLogEntity {
++
++    @Id
++    @GeneratedValue(strategy = GenerationType.IDENTITY)
++    private Long id;
++
++    @ManyToOne(fetch = FetchType.LAZY)
++    @JoinColumn(name = "user_id", nullable = true)
++    private UserEntity user;
++
++    @Column(name = "user_snapshot", length = 255)
++    private String userSnapshot;
++
++    @Enumerated(EnumType.STRING)
++    @Column(name = "action")
++    private EAuditAction action;
++
++    @Column(name = "table_name", length = 100)
++    private String tableName;
++
++    @Column(name = "record_id")
++    private Long recordId;
++
++    @Column(name = "old_values", columnDefinition = "JSON")
++    private String oldValues;
++
++    @Column(name = "new_values", columnDefinition = "JSON")
++    private String newValues;
++
++    @Column(name = "ip_address", length = 45)
++    private String ipAddress;
++
++    @CreationTimestamp
++    @Column(name = "created_at")
++    private LocalDateTime createdAt;
++
++    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tablename, PersonEntity newPerson) {
++        this.user = author;
++        this.userSnapshot = author.getUsername()    ;
++        this.action = eAuditAction;
++        this.tableName = tablename;
++        this.recordId = newPerson.getId();
++        this.newValues = new ObjectMapper().writeValueAsString(newPerson);
++    }
++
++    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tableName, FullPersonDTO oldValues, PersonEntity personToUpdate) {
++        this.user = author;
++        this.userSnapshot = author.getUsername();
++        this.action = eAuditAction;
++        this.tableName = tableName;
++        this.recordId = personToUpdate.getId();
++        this.oldValues = new ObjectMapper().writeValueAsString(oldValues);
++        this.newValues = new ObjectMapper().writeValueAsString(personToUpdate);
++    }
++
++    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tableName, FullPersonDTO selectPerson) {
++        this.user = author;
++        this.userSnapshot = author.getUsername();
++        this.action = eAuditAction;
++        this.tableName = tableName;
++        this.recordId = selectPerson.id();
++        this.newValues = new ObjectMapper().writeValueAsString(selectPerson);
++    }
++
++    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tableName, List<FullPersonDTO> personsList) {
++        this.user = author;
++        this.userSnapshot = author.getUsername();
++        this.action = eAuditAction;
++        this.tableName = tableName;
++        this.newValues = new ObjectMapper().writeValueAsString(personsList);
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/models/Client.java b/src/main/java/com/Ar_Tech/models/Client.java
+index d4bf6c6..09b39f8 100644
+--- a/src/main/java/com/Ar_Tech/models/Client.java
++++ b/src/main/java/com/Ar_Tech/models/Client.java
+@@ -24,7 +24,7 @@ public class Client {
+     @OneToOne(fetch = FetchType.LAZY)
+     @MapsId
+     @JoinColumn(name = "id")
+-    private Person person;
++    private PersonEntity person;
+ 
+     @Column(name = "customer_code", length = 50)
+     private String customerCode;
+diff --git a/src/main/java/com/Ar_Tech/models/ClientCredits.java b/src/main/java/com/Ar_Tech/models/ClientCredits.java
+index 3b8043c..e93ea1e 100644
+--- a/src/main/java/com/Ar_Tech/models/ClientCredits.java
++++ b/src/main/java/com/Ar_Tech/models/ClientCredits.java
+@@ -1,7 +1,5 @@
+ package com.Ar_Tech.models;
+-import com.Ar_Tech.models.ClientEntity;
+-import com.Ar_Tech.models.Sales;
+-import com.Ar_Tech.models.enums.CreditStatus;
++import com.Ar_Tech.models.enums.ECreditStatus;
+ import jakarta.persistence.*;
+ import jakarta.validation.constraints.DecimalMin;
+ import jakarta.validation.constraints.NotNull;
+@@ -45,7 +43,7 @@ public class ClientCredits {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "status")
+-    private CreditStatus status;
++    private ECreditStatus status;
+ 
+     @Column(name = "due_date")
+     private LocalDate dueDate;
+@@ -57,7 +55,7 @@ public class ClientCredits {
+     // Helpers para lógica de negocio
+     @Transient
+     public boolean isOverdue() {
+-        return CreditStatus.OVERDUE.equals(status) ||
++        return ECreditStatus.OVERDUE.equals(status) ||
+                 (dueDate != null && dueDate.isBefore(LocalDate.now()) && balance.compareTo(BigDecimal.ZERO) > 0);
+     }
+ 
+diff --git a/src/main/java/com/Ar_Tech/models/InventoryMovement.java b/src/main/java/com/Ar_Tech/models/InventoryMovement.java
+index a3d8fbd..cd9232a 100644
+--- a/src/main/java/com/Ar_Tech/models/InventoryMovement.java
++++ b/src/main/java/com/Ar_Tech/models/InventoryMovement.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.models;
+ 
+-import com.Ar_Tech.models.enums.MovementReferenceType;
+-import com.Ar_Tech.models.enums.MovementType;
++import com.Ar_Tech.models.enums.EMovementReferenceType;
++import com.Ar_Tech.models.enums.EMovementType;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+@@ -25,7 +25,7 @@ public class InventoryMovement {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "reference_type")
+-    private MovementReferenceType referenceType;
++    private EMovementReferenceType referenceType;
+ 
+     @Column(name = "reference_id")
+     private Long referenceId;
+@@ -36,7 +36,7 @@ public class InventoryMovement {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "movement_type", nullable = false)
+-    private MovementType movementType;
++    private EMovementType movementType;
+ 
+     @Column(name = "quantity", nullable = false)
+     private Integer quantity;
+diff --git a/src/main/java/com/Ar_Tech/models/PartsProducts.java b/src/main/java/com/Ar_Tech/models/PartsProducts.java
+index 2789337..2304a12 100644
+--- a/src/main/java/com/Ar_Tech/models/PartsProducts.java
++++ b/src/main/java/com/Ar_Tech/models/PartsProducts.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models;
+ 
+-import com.Ar_Tech.models.enums.ItemType;
++import com.Ar_Tech.models.enums.EItemType;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Builder;
+@@ -30,7 +30,7 @@ public class PartsProducts {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "item_type", nullable = false)
+-    private ItemType itemType;
++    private EItemType itemType;
+ 
+     @Column(name = "price", precision = 10, scale = 2)
+     private BigDecimal price;
+diff --git a/src/main/java/com/Ar_Tech/models/Payments.java b/src/main/java/com/Ar_Tech/models/Payments.java
+index b48166a..218707b 100644
+--- a/src/main/java/com/Ar_Tech/models/Payments.java
++++ b/src/main/java/com/Ar_Tech/models/Payments.java
+@@ -1,8 +1,5 @@
+ package com.Ar_Tech.models;
+-import com.Ar_Tech.models.ClientEntity;
+-import com.Ar_Tech.models.ClientCredits;
+-import com.Ar_Tech.models.Sales;
+-import com.Ar_Tech.models.enums.PaymentMethod;
++import com.Ar_Tech.models.enums.EPaymentMethod;
+ import jakarta.persistence.*;
+ import jakarta.validation.constraints.DecimalMin;
+ import jakarta.validation.constraints.NotNull;
+@@ -46,7 +43,7 @@ public class Payments {
+     @Enumerated(EnumType.STRING)
+     @Column(name = "payment_method", nullable = false)
+     @NotNull
+-    private PaymentMethod paymentMethod;
++    private EPaymentMethod paymentMethod;
+ 
+     @Column(name = "reference", length = 100)
+     private String reference;
+diff --git a/src/main/java/com/Ar_Tech/models/Person.java b/src/main/java/com/Ar_Tech/models/PersonEntity.java
+similarity index 52%
+rename from src/main/java/com/Ar_Tech/models/Person.java
+rename to src/main/java/com/Ar_Tech/models/PersonEntity.java
+index ea5f8ac..08466db 100644
+--- a/src/main/java/com/Ar_Tech/models/Person.java
++++ b/src/main/java/com/Ar_Tech/models/PersonEntity.java
+@@ -1,6 +1,9 @@
+ package com.Ar_Tech.models;
+ 
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
+ import jakarta.persistence.*;
++import jakarta.validation.Valid;
+ import lombok.AllArgsConstructor;
+ import lombok.Builder;
+ import lombok.Data;
+@@ -15,7 +18,7 @@ import java.time.LocalDateTime;
+ @NoArgsConstructor
+ @AllArgsConstructor
+ @Builder
+-public class Person {
++public class PersonEntity {
+ 
+     @Id
+     @GeneratedValue(strategy = GenerationType.IDENTITY)
+@@ -36,4 +39,25 @@ public class Person {
+     @CreationTimestamp
+     @Column(name = "created_at")
+     private LocalDateTime createdAt;
++
++    public PersonEntity(PersonDTO personDTO) {
++        this.firstName = personDTO.firstName();
++        this.lastName = personDTO.lastName();
++        this.email = personDTO.email();
++        this.phone = personDTO.phone();
++    }
++
++    public void update(@Valid FullPersonDTO person) {
++        if(this.firstName != null)
++            this.firstName = person.firstName();
++
++        if(this.lastName != null)
++            this.lastName = person.lastName();
++
++        if(this.email != null)
++            this.email = person.email();
++
++        if(this.phone != null)
++            this.phone = person.phone();
++    }
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/models/Returns.java b/src/main/java/com/Ar_Tech/models/Returns.java
+index b44e459..35dda52 100644
+--- a/src/main/java/com/Ar_Tech/models/Returns.java
++++ b/src/main/java/com/Ar_Tech/models/Returns.java
+@@ -1,8 +1,6 @@
+ package com.Ar_Tech.models;
+-import com.Ar_Tech.models.ClientEntity;
+-import com.Ar_Tech.models.Sales;
+-import com.Ar_Tech.models.enums.ReturnStatus;
+-import com.Ar_Tech.models.enums.ReturnType;
++import com.Ar_Tech.models.enums.EReturnStatus;
++import com.Ar_Tech.models.enums.EReturnType;
+ import jakarta.persistence.*;
+ import jakarta.validation.constraints.NotNull;
+ import lombok.AllArgsConstructor;
+@@ -36,11 +34,11 @@ public class Returns {
+     @Enumerated(EnumType.STRING)
+     @Column(name = "return_type", nullable = false)
+     @NotNull
+-    private ReturnType returnType;
++    private EReturnType returnType;
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "status")
+-    private ReturnStatus status;
++    private EReturnStatus status;
+ 
+     @Column(name = "notes", columnDefinition = "TEXT")
+     private String notes;
+@@ -52,7 +50,7 @@ public class Returns {
+     // Helper para flujo de negocio
+     @Transient
+     public boolean isPendingReview() {
+-        return ReturnStatus.UNDER_REVIEW.equals(status) ||
+-                (status == null && ReturnType.WARRANTY.equals(returnType));
++        return EReturnStatus.UNDER_REVIEW.equals(status) ||
++                (status == null && EReturnType.WARRANTY.equals(returnType));
+     }
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/models/Sales.java b/src/main/java/com/Ar_Tech/models/Sales.java
+index a2ebe9f..1758f0f 100644
+--- a/src/main/java/com/Ar_Tech/models/Sales.java
++++ b/src/main/java/com/Ar_Tech/models/Sales.java
+@@ -1,8 +1,8 @@
+ package com.Ar_Tech.models;
+ 
+ 
+-import com.Ar_Tech.models.enums.SaleStatus;
+-import com.Ar_Tech.models.enums.SaleType;
++import com.Ar_Tech.models.enums.ESaleStatus;
++import com.Ar_Tech.models.enums.ESaleType;
+ import jakarta.persistence.*;
+ import jakarta.validation.constraints.DecimalMin;
+ import jakarta.validation.constraints.NotNull;
+@@ -44,12 +44,12 @@ public class Sales {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "status")
+-    private SaleStatus status;
++    private ESaleStatus status;
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "sale_type", nullable = false)
+     @NotNull
+-    private SaleType saleType;
++    private ESaleType saleType;
+ 
+     @CreationTimestamp
+     @Column(name = "created_at", updatable = false)
+diff --git a/src/main/java/com/Ar_Tech/models/ServiceOrder.java b/src/main/java/com/Ar_Tech/models/ServiceOrder.java
+index 8899974..e94c889 100644
+--- a/src/main/java/com/Ar_Tech/models/ServiceOrder.java
++++ b/src/main/java/com/Ar_Tech/models/ServiceOrder.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models;
+ 
+-import com.Ar_Tech.models.enums.ServiceOrderStatus;
++import com.Ar_Tech.models.enums.EServiceOrderStatus;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Builder;
+@@ -38,7 +38,7 @@ public class ServiceOrder {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "status")
+-    private ServiceOrderStatus status;
++    private EServiceOrderStatus status;
+ 
+     @ManyToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "assigned_to")
+diff --git a/src/main/java/com/Ar_Tech/models/ServiceOrderAuthorization.java b/src/main/java/com/Ar_Tech/models/ServiceOrderAuthorization.java
+index bff1fb6..3e61805 100644
+--- a/src/main/java/com/Ar_Tech/models/ServiceOrderAuthorization.java
++++ b/src/main/java/com/Ar_Tech/models/ServiceOrderAuthorization.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models;
+ 
+-import com.Ar_Tech.models.enums.AuthorizationStatus;
++import com.Ar_Tech.models.enums.EAuthorizationStatus;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+@@ -32,7 +32,7 @@ public class ServiceOrderAuthorization {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "authorization_status", nullable = false)
+-    private AuthorizationStatus authorizationStatus;
++    private EAuthorizationStatus authorizationStatus;
+ 
+     @Column(name = "authorized_at")
+     private LocalDateTime authorizedAt;
+diff --git a/src/main/java/com/Ar_Tech/models/ServiceOrderHistory.java b/src/main/java/com/Ar_Tech/models/ServiceOrderHistory.java
+index 9e826bd..2710b4d 100644
+--- a/src/main/java/com/Ar_Tech/models/ServiceOrderHistory.java
++++ b/src/main/java/com/Ar_Tech/models/ServiceOrderHistory.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.models;
+ 
+ 
+-import com.Ar_Tech.models.enums.ServiceOrderStatus;
++import com.Ar_Tech.models.enums.EServiceOrderStatus;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+@@ -27,7 +27,7 @@ public class ServiceOrderHistory {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "status")
+-    private ServiceOrderStatus status;
++    private EServiceOrderStatus status;
+ 
+     @Column(name = "notes", columnDefinition = "TEXT")
+     private String notes;
+diff --git a/src/main/java/com/Ar_Tech/models/ServiceOrderImage.java b/src/main/java/com/Ar_Tech/models/ServiceOrderImage.java
+index 5d27331..ac937ec 100644
+--- a/src/main/java/com/Ar_Tech/models/ServiceOrderImage.java
++++ b/src/main/java/com/Ar_Tech/models/ServiceOrderImage.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models;
+ 
+-import com.Ar_Tech.models.enums.ImageType;
++import com.Ar_Tech.models.enums.EImageType;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+@@ -27,7 +27,7 @@ public class ServiceOrderImage {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "image_type", nullable = false)
+-    private ImageType imageType;
++    private EImageType imageType;
+ 
+     @Column(name = "description", length = 255)
+     private String description;
+diff --git a/src/main/java/com/Ar_Tech/models/ServiceOrderParts.java b/src/main/java/com/Ar_Tech/models/ServiceOrderParts.java
+index 608c04e..2034570 100644
+--- a/src/main/java/com/Ar_Tech/models/ServiceOrderParts.java
++++ b/src/main/java/com/Ar_Tech/models/ServiceOrderParts.java
+@@ -1,7 +1,5 @@
+ package com.Ar_Tech.models;
+-import com.Ar_Tech.models.ServiceOrder;
+-import com.Ar_Tech.models.PartsProducts;
+-import com.Ar_Tech.models.enums.PartStatus;
++import com.Ar_Tech.models.enums.EPartStatus;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+@@ -36,7 +34,7 @@ public class ServiceOrderParts {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "status")
+-    private PartStatus status;
++    private EPartStatus status;
+ 
+     @Column(name = "created_at")
+     private LocalDateTime createdAt;
+diff --git a/src/main/java/com/Ar_Tech/models/ServiceOrderProductsParts.java b/src/main/java/com/Ar_Tech/models/ServiceOrderProductsParts.java
+index 14c4f8b..c387417 100644
+--- a/src/main/java/com/Ar_Tech/models/ServiceOrderProductsParts.java
++++ b/src/main/java/com/Ar_Tech/models/ServiceOrderProductsParts.java
+@@ -1,8 +1,6 @@
+ package com.Ar_Tech.models;
+ 
+-import com.Ar_Tech.models.ServiceOrder;
+-import com.Ar_Tech.models.PartsProducts;
+-import com.Ar_Tech.models.enums.UsageType;
++import com.Ar_Tech.models.enums.EUsageType;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+@@ -36,5 +34,5 @@ public class ServiceOrderProductsParts {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "usage_type")
+-    private UsageType usageType;
++    private EUsageType usageType;
+ }
+diff --git a/src/main/java/com/Ar_Tech/models/UserEntity.java b/src/main/java/com/Ar_Tech/models/UserEntity.java
+index 764965d..0f8c24d 100644
+--- a/src/main/java/com/Ar_Tech/models/UserEntity.java
++++ b/src/main/java/com/Ar_Tech/models/UserEntity.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.models;
+ 
+-import com.Ar_Tech.models.enums.UserRole;
+-import com.Ar_Tech.models.enums.UserStatus;
++import com.Ar_Tech.models.enums.EUserRole;
++import com.Ar_Tech.models.enums.EUserStatus;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Builder;
+@@ -25,7 +25,7 @@ public class UserEntity {
+     @OneToOne(fetch = FetchType.LAZY)
+     @MapsId
+     @JoinColumn(name = "id")
+-    private Person person;
++    private PersonEntity person;
+ 
+     @Column(name = "username", length = 50, nullable = false, unique = true)
+     private String username;
+@@ -35,11 +35,11 @@ public class UserEntity {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "status")
+-    private UserStatus status;
++    private EUserStatus status;
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "role")
+-    private UserRole role;
++    private EUserRole role;
+ 
+     @CreationTimestamp
+     @Column(name = "created_at")
+diff --git a/src/main/java/com/Ar_Tech/models/WarrantyProcess.java b/src/main/java/com/Ar_Tech/models/WarrantyProcess.java
+index 8eec9c6..f89eb2e 100644
+--- a/src/main/java/com/Ar_Tech/models/WarrantyProcess.java
++++ b/src/main/java/com/Ar_Tech/models/WarrantyProcess.java
+@@ -1,7 +1,5 @@
+ package com.Ar_Tech.models;
+-import com.Ar_Tech.models.Returns;
+-import com.Ar_Tech.models.ServiceOrder;
+-import com.Ar_Tech.models.enums.WarrantyResolution;
++import com.Ar_Tech.models.enums.EWarrantyResolution;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+@@ -29,7 +27,7 @@ public class WarrantyProcess {
+ 
+     @Enumerated(EnumType.STRING)
+     @Column(name = "resolution")
+-    private WarrantyResolution resolution;
++    private EWarrantyResolution resolution;
+ 
+     @Column(name = "completed_at")
+     private LocalDateTime completedAt;
+diff --git a/src/main/java/com/Ar_Tech/models/enums/AuditAction.java b/src/main/java/com/Ar_Tech/models/enums/EAuditAction.java
+similarity index 75%
+rename from src/main/java/com/Ar_Tech/models/enums/AuditAction.java
+rename to src/main/java/com/Ar_Tech/models/enums/EAuditAction.java
+index 8cf5d0b..f17138f 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/AuditAction.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EAuditAction.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum AuditAction {
++public enum EAuditAction {
+     INSERT,
+     UPDATE,
+     DELETE,
+diff --git a/src/main/java/com/Ar_Tech/models/enums/AuthorizationStatus.java b/src/main/java/com/Ar_Tech/models/enums/EAuthorizationStatus.java
+similarity index 68%
+rename from src/main/java/com/Ar_Tech/models/enums/AuthorizationStatus.java
+rename to src/main/java/com/Ar_Tech/models/enums/EAuthorizationStatus.java
+index 58041e2..6f2c754 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/AuthorizationStatus.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EAuthorizationStatus.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum AuthorizationStatus {
++public enum EAuthorizationStatus {
+     PENDING,
+     APPROVED,
+     REJECTED
+diff --git a/src/main/java/com/Ar_Tech/models/enums/CreditStatus.java b/src/main/java/com/Ar_Tech/models/enums/ECreditStatus.java
+similarity index 71%
+rename from src/main/java/com/Ar_Tech/models/enums/CreditStatus.java
+rename to src/main/java/com/Ar_Tech/models/enums/ECreditStatus.java
+index 646bb49..7ac88e9 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/CreditStatus.java
++++ b/src/main/java/com/Ar_Tech/models/enums/ECreditStatus.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum CreditStatus {
++public enum ECreditStatus {
+     ACTIVE,
+     PAID,
+     OVERDUE
+diff --git a/src/main/java/com/Ar_Tech/models/enums/ImageType.java b/src/main/java/com/Ar_Tech/models/enums/EImageType.java
+similarity index 78%
+rename from src/main/java/com/Ar_Tech/models/enums/ImageType.java
+rename to src/main/java/com/Ar_Tech/models/enums/EImageType.java
+index c6dd8d2..b0b925f 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/ImageType.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EImageType.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum ImageType {
++public enum EImageType {
+     RECEPTION,
+     DIAGNOSIS,
+     REPAIR,
+diff --git a/src/main/java/com/Ar_Tech/models/enums/ItemType.java b/src/main/java/com/Ar_Tech/models/enums/EItemType.java
+similarity index 70%
+rename from src/main/java/com/Ar_Tech/models/enums/ItemType.java
+rename to src/main/java/com/Ar_Tech/models/enums/EItemType.java
+index f548012..590c2d5 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/ItemType.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EItemType.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum ItemType {
++public enum EItemType {
+     PRODUCT,
+     PART
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/models/enums/MovementReferenceType.java b/src/main/java/com/Ar_Tech/models/enums/EMovementReferenceType.java
+similarity index 65%
+rename from src/main/java/com/Ar_Tech/models/enums/MovementReferenceType.java
+rename to src/main/java/com/Ar_Tech/models/enums/EMovementReferenceType.java
+index e5a5270..45d8050 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/MovementReferenceType.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EMovementReferenceType.java
+@@ -1,7 +1,7 @@
+ 
+ package com.Ar_Tech.models.enums;
+ 
+-public enum MovementReferenceType {
++public enum EMovementReferenceType {
+     IN,
+     OUT,
+     ADJUSTMENT
+diff --git a/src/main/java/com/Ar_Tech/models/enums/MovementType.java b/src/main/java/com/Ar_Tech/models/enums/EMovementType.java
+similarity index 70%
+rename from src/main/java/com/Ar_Tech/models/enums/MovementType.java
+rename to src/main/java/com/Ar_Tech/models/enums/EMovementType.java
+index 4114d48..f81d76e 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/MovementType.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EMovementType.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum MovementType {
++public enum EMovementType {
+     IN,
+     OUT,
+     ADJUSTMENT
+diff --git a/src/main/java/com/Ar_Tech/models/enums/PartStatus.java b/src/main/java/com/Ar_Tech/models/enums/EPartStatus.java
+similarity index 76%
+rename from src/main/java/com/Ar_Tech/models/enums/PartStatus.java
+rename to src/main/java/com/Ar_Tech/models/enums/EPartStatus.java
+index e7f2327..22b7f2f 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/PartStatus.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EPartStatus.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum PartStatus {
++public enum EPartStatus {
+     REQUESTED,
+     ORDERED,
+     RECEIVED,
+diff --git a/src/main/java/com/Ar_Tech/models/enums/PaymentMethod.java b/src/main/java/com/Ar_Tech/models/enums/EPaymentMethod.java
+similarity index 73%
+rename from src/main/java/com/Ar_Tech/models/enums/PaymentMethod.java
+rename to src/main/java/com/Ar_Tech/models/enums/EPaymentMethod.java
+index fc1f8a1..2e0de9a 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/PaymentMethod.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EPaymentMethod.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum PaymentMethod {
++public enum EPaymentMethod {
+     CASH,
+     CARD,
+     TRANSFER,
+diff --git a/src/main/java/com/Ar_Tech/models/enums/ReturnStatus.java b/src/main/java/com/Ar_Tech/models/enums/EReturnStatus.java
+similarity index 79%
+rename from src/main/java/com/Ar_Tech/models/enums/ReturnStatus.java
+rename to src/main/java/com/Ar_Tech/models/enums/EReturnStatus.java
+index ea4bdbb..9e7452f 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/ReturnStatus.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EReturnStatus.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum  ReturnStatus{
++public enum EReturnStatus {
+     RECEIVED,
+     UNDER_REVIEW,
+     APPROVED,
+diff --git a/src/main/java/com/Ar_Tech/models/enums/ReturnType.java b/src/main/java/com/Ar_Tech/models/enums/EReturnType.java
+similarity index 74%
+rename from src/main/java/com/Ar_Tech/models/enums/ReturnType.java
+rename to src/main/java/com/Ar_Tech/models/enums/EReturnType.java
+index 4f86135..5b4bb67 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/ReturnType.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EReturnType.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum ReturnType {
++public enum EReturnType {
+     WARRANTY,
+     REFUND,
+     EXCHANGE
+diff --git a/src/main/java/com/Ar_Tech/models/enums/SaleStatus.java b/src/main/java/com/Ar_Tech/models/enums/ESaleStatus.java
+similarity index 73%
+rename from src/main/java/com/Ar_Tech/models/enums/SaleStatus.java
+rename to src/main/java/com/Ar_Tech/models/enums/ESaleStatus.java
+index 579c667..7949690 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/SaleStatus.java
++++ b/src/main/java/com/Ar_Tech/models/enums/ESaleStatus.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum SaleStatus {
++public enum ESaleStatus {
+     PENDING,
+     PAID,
+     CANCELLED
+diff --git a/src/main/java/com/Ar_Tech/models/enums/SaleType.java b/src/main/java/com/Ar_Tech/models/enums/ESaleType.java
+similarity index 70%
+rename from src/main/java/com/Ar_Tech/models/enums/SaleType.java
+rename to src/main/java/com/Ar_Tech/models/enums/ESaleType.java
+index 6637f6c..2d013e7 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/SaleType.java
++++ b/src/main/java/com/Ar_Tech/models/enums/ESaleType.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum SaleType {
++public enum ESaleType {
+     CASH,
+     CREDIT
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/models/enums/ServiceOrderStatus.java b/src/main/java/com/Ar_Tech/models/enums/EServiceOrderStatus.java
+similarity index 83%
+rename from src/main/java/com/Ar_Tech/models/enums/ServiceOrderStatus.java
+rename to src/main/java/com/Ar_Tech/models/enums/EServiceOrderStatus.java
+index 76eece6..3d39df1 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/ServiceOrderStatus.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EServiceOrderStatus.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum ServiceOrderStatus {
++public enum EServiceOrderStatus {
+     RECEIVED,
+     IN_DIAGNOSIS,
+     WAITING_PARTS,
+diff --git a/src/main/java/com/Ar_Tech/models/enums/UsageType.java b/src/main/java/com/Ar_Tech/models/enums/EUsageType.java
+similarity index 70%
+rename from src/main/java/com/Ar_Tech/models/enums/UsageType.java
+rename to src/main/java/com/Ar_Tech/models/enums/EUsageType.java
+index be2be68..c343387 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/UsageType.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EUsageType.java
+@@ -1,7 +1,7 @@
+ 
+ package com.Ar_Tech.models.enums;
+ 
+-public enum UsageType {
++public enum EUsageType {
+     CONSUMED,
+     SOLD
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/models/enums/UserRole.java b/src/main/java/com/Ar_Tech/models/enums/EUserRole.java
+similarity index 76%
+rename from src/main/java/com/Ar_Tech/models/enums/UserRole.java
+rename to src/main/java/com/Ar_Tech/models/enums/EUserRole.java
+index 0cf8760..b551ec3 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/UserRole.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EUserRole.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum UserRole {
++public enum EUserRole {
+     ADMIN,
+     TECHNICIAN,
+     RECEPTION
+diff --git a/src/main/java/com/Ar_Tech/models/enums/UserStatus.java b/src/main/java/com/Ar_Tech/models/enums/EUserStatus.java
+similarity index 74%
+rename from src/main/java/com/Ar_Tech/models/enums/UserStatus.java
+rename to src/main/java/com/Ar_Tech/models/enums/EUserStatus.java
+index 4215dc1..12d7ef1 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/UserStatus.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EUserStatus.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum UserStatus {
++public enum EUserStatus {
+     ACTIVE,
+     INACTIVE,
+     DELETED
+diff --git a/src/main/java/com/Ar_Tech/models/enums/WarrantyResolution.java b/src/main/java/com/Ar_Tech/models/enums/EWarrantyResolution.java
+similarity index 74%
+rename from src/main/java/com/Ar_Tech/models/enums/WarrantyResolution.java
+rename to src/main/java/com/Ar_Tech/models/enums/EWarrantyResolution.java
+index 49e3cda..4243c30 100644
+--- a/src/main/java/com/Ar_Tech/models/enums/WarrantyResolution.java
++++ b/src/main/java/com/Ar_Tech/models/enums/EWarrantyResolution.java
+@@ -1,6 +1,6 @@
+ package com.Ar_Tech.models.enums;
+ 
+-public enum WarrantyResolution {
++public enum EWarrantyResolution {
+     REPAIRED,
+     REPLACED,
+     REFUNDED,
+diff --git a/src/main/java/com/Ar_Tech/repositories/AuditLogRepository.java b/src/main/java/com/Ar_Tech/repositories/AuditLogRepository.java
+index fcf7c03..ddd4abc 100644
+--- a/src/main/java/com/Ar_Tech/repositories/AuditLogRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/AuditLogRepository.java
+@@ -1,9 +1,9 @@
+ package com.Ar_Tech.repositories;
+ 
+-import com.Ar_Tech.models.AuditLog;
++import com.Ar_Tech.models.AuditLogEntity;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.stereotype.Repository;
+ 
+ @Repository
+-public interface AuditLogRepository extends JpaRepository<AuditLog, Integer> {
++public interface AuditLogRepository extends JpaRepository<AuditLogEntity, Integer> {
+ }
+diff --git a/src/main/java/com/Ar_Tech/repositories/ClientCreditsRepository.java b/src/main/java/com/Ar_Tech/repositories/ClientCreditsRepository.java
+index b62a006..821291d 100644
+--- a/src/main/java/com/Ar_Tech/repositories/ClientCreditsRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/ClientCreditsRepository.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.repositories;
+ 
+ import com.Ar_Tech.models.ClientCredits;
+-import com.Ar_Tech.models.enums.CreditStatus;
++import com.Ar_Tech.models.enums.ECreditStatus;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -12,7 +12,7 @@ public interface ClientCreditsRepository extends JpaRepository<ClientCredits, Lo
+ 
+     Page<ClientCredits> findByClientId(Long clientId, Pageable pageable);
+     
+-    Page<ClientCredits> findByStatus(CreditStatus status, Pageable pageable);
++    Page<ClientCredits> findByStatus(ECreditStatus status, Pageable pageable);
+     
+-    Page<ClientCredits> findByStatusAndTotalAmountGreaterThan(CreditStatus status, java.math.BigDecimal minAmount, Pageable pageable);
++    Page<ClientCredits> findByStatusAndTotalAmountGreaterThan(ECreditStatus status, java.math.BigDecimal minAmount, Pageable pageable);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/repositories/InventoryMovementRepository.java b/src/main/java/com/Ar_Tech/repositories/InventoryMovementRepository.java
+index d1397d1..1a8f4fc 100644
+--- a/src/main/java/com/Ar_Tech/repositories/InventoryMovementRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/InventoryMovementRepository.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.repositories;
+ 
+ import com.Ar_Tech.models.InventoryMovement;
+-import com.Ar_Tech.models.enums.MovementType;
++import com.Ar_Tech.models.enums.EMovementType;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
+ @Repository
+ public interface InventoryMovementRepository extends JpaRepository<InventoryMovement, Long> {
+ 
+-    Page<InventoryMovement> findByMovementType(MovementType movementType, Pageable pageable);
++    Page<InventoryMovement> findByMovementType(EMovementType movementType, Pageable pageable);
+     
+     Page<InventoryMovement> findByProduct_Id(Long partsProductsId, Pageable pageable);
+     
+diff --git a/src/main/java/com/Ar_Tech/repositories/PaymentsRepository.java b/src/main/java/com/Ar_Tech/repositories/PaymentsRepository.java
+index e7bd724..5f9cd0e 100644
+--- a/src/main/java/com/Ar_Tech/repositories/PaymentsRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/PaymentsRepository.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.repositories;
+ 
+ import com.Ar_Tech.models.Payments;
+-import com.Ar_Tech.models.enums.PaymentMethod;
++import com.Ar_Tech.models.enums.EPaymentMethod;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
+ @Repository
+ public interface PaymentsRepository extends JpaRepository<Payments, Long> {
+ 
+-    Page<Payments> findByPaymentMethod(PaymentMethod paymentMethod, Pageable pageable);
++    Page<Payments> findByPaymentMethod(EPaymentMethod paymentMethod, Pageable pageable);
+     
+     Page<Payments> findBySale_Id(Long salesId, Pageable pageable);
+     
+diff --git a/src/main/java/com/Ar_Tech/repositories/PersonRepository.java b/src/main/java/com/Ar_Tech/repositories/PersonRepository.java
+index 42a34f7..714dad1 100644
+--- a/src/main/java/com/Ar_Tech/repositories/PersonRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/PersonRepository.java
+@@ -1,21 +1,37 @@
+ package com.Ar_Tech.repositories;
+ 
+-import com.Ar_Tech.models.Person;
++import com.Ar_Tech.models.PersonEntity;
++import jakarta.validation.constraints.Email;
++import jakarta.validation.constraints.NotBlank;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Size;
++import lombok.NonNull;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.stereotype.Repository;
+ 
++import java.util.List;
+ import java.util.Optional;
+ 
+ @Repository
+-public interface PersonRepository extends JpaRepository<Person, Long> {
++public interface PersonRepository extends JpaRepository<PersonEntity, Long> {
+ 
+-    Optional<Person> findByEmail(String email);
++    Optional<PersonEntity> findByEmail(String email);
+     
+-    Optional<Person> findByPhone(String phone);
++    Optional<PersonEntity> findByPhone(String phone);
+     
+-    Page<Person> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(String firstName, String lastName, Pageable pageable);
++    Page<PersonEntity> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(String firstName, String lastName, Pageable pageable);
+     
+-    Page<Person> findByEmailContainingIgnoreCase(String email, Pageable pageable);
++    Page<PersonEntity> findByEmailContainingIgnoreCase(String email, Pageable pageable);
++
++    List<PersonEntity> findByFirstNameAndLastName(@NonNull @NotBlank(message = "First name is required") @Size(max = 50, message = "First name must not exceed 50 characters") String s, @NonNull @NotBlank(message = "Last name is required") @Size(max = 50, message = "Last name must not exceed 50 characters") String string);
++
++    Boolean existsByEmail(@NonNull @NotBlank(message = "Email is required") @Email(message = "Email must be valid") @Size(max = 150, message = "Email must not exceed 150 characters") String email);
++
++    Boolean findByFirstNameAndLastNameAndIdNot(@NonNull @NotBlank(message = "First name is required") String firstName, @NonNull @NotBlank(message = "Last name is required") String lastName, @NotNull Long id);
++
++    Boolean existsByEmailAndIdNot(String email, @NotNull Long id);
++
++    boolean existsByFirstNameAndLastNameAndIdNot(String firstName, String lastName, @NotNull Long id);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/repositories/ReturnsRepository.java b/src/main/java/com/Ar_Tech/repositories/ReturnsRepository.java
+index af5650d..71c6657 100644
+--- a/src/main/java/com/Ar_Tech/repositories/ReturnsRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/ReturnsRepository.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.repositories;
+ 
+ import com.Ar_Tech.models.Returns;
+-import com.Ar_Tech.models.enums.ReturnStatus;
++import com.Ar_Tech.models.enums.EReturnStatus;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
+ @Repository
+ public interface ReturnsRepository extends JpaRepository<Returns, Long> {
+ 
+-    Page<Returns> findByStatus(ReturnStatus status, Pageable pageable);
++    Page<Returns> findByStatus(EReturnStatus status, Pageable pageable);
+     
+     Page<Returns> findBySale_Id(Long salesId, Pageable pageable);
+     
+diff --git a/src/main/java/com/Ar_Tech/repositories/SalesRepository.java b/src/main/java/com/Ar_Tech/repositories/SalesRepository.java
+index 160d196..d8c466d 100644
+--- a/src/main/java/com/Ar_Tech/repositories/SalesRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/SalesRepository.java
+@@ -1,8 +1,8 @@
+ package com.Ar_Tech.repositories;
+ 
+ import com.Ar_Tech.models.Sales;
+-import com.Ar_Tech.models.enums.SaleStatus;
+-import com.Ar_Tech.models.enums.SaleType;
++import com.Ar_Tech.models.enums.ESaleStatus;
++import com.Ar_Tech.models.enums.ESaleType;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -17,11 +17,11 @@ public interface SalesRepository extends JpaRepository<Sales, Long> {
+     
+     Page<Sales> findByClientId(Long clientId, Pageable pageable);
+     
+-    Page<Sales> findByStatus(SaleStatus status, Pageable pageable);
++    Page<Sales> findByStatus(ESaleStatus status, Pageable pageable);
+     
+-    Page<Sales> findBySaleType(SaleType saleType, Pageable pageable);
++    Page<Sales> findBySaleType(ESaleType saleType, Pageable pageable);
+     
+-    Page<Sales> findByClientIdAndStatus(Long clientId, SaleStatus status, Pageable pageable);
++    Page<Sales> findByClientIdAndStatus(Long clientId, ESaleStatus status, Pageable pageable);
+     
+     Page<Sales> findByTotalGreaterThanEqualOrderByCreatedAtDesc(java.math.BigDecimal minTotal, Pageable pageable);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/repositories/ServiceOrderAuthorizationRepository.java b/src/main/java/com/Ar_Tech/repositories/ServiceOrderAuthorizationRepository.java
+index ddfce19..fa362fb 100644
+--- a/src/main/java/com/Ar_Tech/repositories/ServiceOrderAuthorizationRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/ServiceOrderAuthorizationRepository.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.repositories;
+ 
+ import com.Ar_Tech.models.ServiceOrderAuthorization;
+-import com.Ar_Tech.models.enums.AuthorizationStatus;
++import com.Ar_Tech.models.enums.EAuthorizationStatus;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -12,5 +12,5 @@ public interface ServiceOrderAuthorizationRepository extends JpaRepository<Servi
+ 
+     Page<ServiceOrderAuthorization> findByServiceOrderId(Long serviceOrderId, Pageable pageable);
+     
+-    Page<ServiceOrderAuthorization> findByAuthorizationStatus(AuthorizationStatus status, Pageable pageable);
++    Page<ServiceOrderAuthorization> findByAuthorizationStatus(EAuthorizationStatus status, Pageable pageable);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/repositories/ServiceOrderImageRepository.java b/src/main/java/com/Ar_Tech/repositories/ServiceOrderImageRepository.java
+index ca4fd65..b622dfa 100644
+--- a/src/main/java/com/Ar_Tech/repositories/ServiceOrderImageRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/ServiceOrderImageRepository.java
+@@ -1,11 +1,7 @@
+ 
+ package com.Ar_Tech.repositories;
+ 
+-import com.Ar_Tech.models.AuditLog;
+ import com.Ar_Tech.models.ServiceOrderImage;
+-import com.Ar_Tech.models.enums.ImageType;
+-import org.springframework.data.domain.Page;
+-import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.stereotype.Repository;
+ 
+diff --git a/src/main/java/com/Ar_Tech/repositories/ServiceOrderProductsPartsRepository.java b/src/main/java/com/Ar_Tech/repositories/ServiceOrderProductsPartsRepository.java
+index f62f2f2..d8d011e 100644
+--- a/src/main/java/com/Ar_Tech/repositories/ServiceOrderProductsPartsRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/ServiceOrderProductsPartsRepository.java
+@@ -1,7 +1,6 @@
+ 
+ package com.Ar_Tech.repositories;
+ 
+-import com.Ar_Tech.models.AuditLog;
+ import com.Ar_Tech.models.ServiceOrderProductsParts;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.stereotype.Repository;
+diff --git a/src/main/java/com/Ar_Tech/repositories/ServiceOrderRepository.java b/src/main/java/com/Ar_Tech/repositories/ServiceOrderRepository.java
+index b9fe3d8..f15cd6b 100644
+--- a/src/main/java/com/Ar_Tech/repositories/ServiceOrderRepository.java
++++ b/src/main/java/com/Ar_Tech/repositories/ServiceOrderRepository.java
+@@ -1,7 +1,7 @@
+ package com.Ar_Tech.repositories;
+ 
+ import com.Ar_Tech.models.ServiceOrder;
+-import com.Ar_Tech.models.enums.ServiceOrderStatus;
++import com.Ar_Tech.models.enums.EServiceOrderStatus;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.EntityGraph;
+@@ -15,17 +15,17 @@ public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, Long
+ 
+     Optional<ServiceOrder> findByFolio(String folio);
+     
+-    Page<ServiceOrder> findByStatus(ServiceOrderStatus status, Pageable pageable);
++    Page<ServiceOrder> findByStatus(EServiceOrderStatus status, Pageable pageable);
+     
+     Page<ServiceOrder> findByAssignedToId(Long assignedToId, Pageable pageable);
+     
+     Page<ServiceOrder> findByCustomerDeviceClientId(Long clientId, Pageable pageable);
+     
+     @EntityGraph(attributePaths = {"customerDevice", "assignedTo", "createdBy"})
+-    Page<ServiceOrder> findServiceOrderByStatus(ServiceOrderStatus status, Pageable pageable);
++    Page<ServiceOrder> findServiceOrderByStatus(EServiceOrderStatus status, Pageable pageable);
+     
+     @EntityGraph(attributePaths = {"customerDevice.device", "serviceOrderParts", "serviceOrderHistory"})
+     Optional<ServiceOrder> findById(Long id);
+     
+-    Page<ServiceOrder> findByCreatedByIdAndStatus(Long userId, ServiceOrderStatus status, Pageable pageable);
++    Page<ServiceOrder> findByCreatedByIdAndStatus(Long userId, EServiceOrderStatus status, Pageable pageable);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/Ar_Tech/services/AuditLogService.java b/src/main/java/com/Ar_Tech/services/AuditLogService.java
+new file mode 100644
+index 0000000..d1f20d8
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/services/AuditLogService.java
+@@ -0,0 +1,21 @@
++package com.Ar_Tech.services;
++
++import com.Ar_Tech.models.AuditLogEntity;
++import com.Ar_Tech.repositories.AuditLogRepository;
++import com.Ar_Tech.repositories.UserRepository;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.stereotype.Service;
++
++@Service
++public class AuditLogService {
++
++    @Autowired
++    private AuditLogRepository auditLogRepository;
++
++    @Autowired
++    private UserRepository userRepository;
++
++    public void create(AuditLogEntity auditLog){
++        auditLogRepository.save(auditLog);
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/services/ClientService.java b/src/main/java/com/Ar_Tech/services/ClientService.java
+new file mode 100644
+index 0000000..bbbb230
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/services/ClientService.java
+@@ -0,0 +1,12 @@
++package com.Ar_Tech.services;
++
++import com.Ar_Tech.dto.persons.PersonDTO;
++import org.springframework.stereotype.Service;
++
++@Service
++public class ClientService {
++
++    public void create(PersonDTO person){
++
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/services/PersonService.java b/src/main/java/com/Ar_Tech/services/PersonService.java
+new file mode 100644
+index 0000000..6b88fdd
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/services/PersonService.java
+@@ -0,0 +1,143 @@
++package com.Ar_Tech.services;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.infra.errors.MyIntegrityValidation;
++import com.Ar_Tech.infra.security.utils.JwtUtils;
++import com.Ar_Tech.models.AuditLogEntity;
++import com.Ar_Tech.models.PersonEntity;
++import com.Ar_Tech.models.UserEntity;
++import com.Ar_Tech.models.enums.EAuditAction;
++import com.Ar_Tech.repositories.PersonRepository;
++import com.Ar_Tech.repositories.UserRepository;
++import com.Ar_Tech.validations.persons.create.IPersonValidation;
++import com.Ar_Tech.validations.persons.update.IUpdatePersonValidation;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import jakarta.servlet.http.HttpServletRequest;
++import jakarta.validation.Valid;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Qualifier;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
++import org.springframework.stereotype.Service;
++import tools.jackson.databind.node.ObjectNode;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Objects;
++
++@Service
++public class PersonService {
++
++    @Autowired
++    private PersonRepository personRepository;
++
++    @Autowired
++    private UserRepository userRepository;
++
++    @Autowired
++    private JwtUtils jwtUtils;
++
++    @Autowired
++    private AuditLogService auditLogService;
++
++    @Autowired
++    @Qualifier("createPersonValidators")
++    private List<IPersonValidation> createValidators = new ArrayList<>();
++
++    @Autowired
++    private List<IUpdatePersonValidation> updateValidators = new ArrayList<>();
++
++    public FullPersonDTO create(PersonDTO personDTO, HttpServletRequest request){
++        createValidators.forEach(i->i.validate(personDTO));
++
++        UserEntity author = jwtUtils.getUserFromRequest(request);
++
++        PersonEntity newPerson = new PersonEntity(personDTO);
++
++        personRepository.save(newPerson);
++
++        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.INSERT, "persons", newPerson);
++
++        auditLogService.create(auditLog);
++
++        return new FullPersonDTO(newPerson);
++    }
++
++
++    public void delete(Long id, HttpServletRequest request){
++        UserEntity author = jwtUtils.getUserFromRequest(request);
++
++        if(author.getId().equals(id)){
++            throw new MyIntegrityValidation("No tienes autorizado eliminar tu propio registro", 400);
++        }
++
++        PersonEntity personToDelete = personRepository.findById(id)
++                .orElseThrow(()-> new MyIntegrityValidation("El registro indicado no existe",400));
++
++        personRepository.delete(personToDelete);
++
++        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.DELETE, "persons", personToDelete);
++        auditLogService.create(auditLog);
++    }
++
++    public String update(@Valid FullPersonDTO fullPersonDTO, HttpServletRequest request) {
++        updateValidators.forEach(i-> i.validate(fullPersonDTO));
++
++        UserEntity author = jwtUtils.getUserFromRequest(request);
++        PersonEntity personToUpdate = personRepository.findById(fullPersonDTO.id())
++                .orElseThrow(()->new MyIntegrityValidation("El registro indicado no existe",400));
++
++        if(!isUpdatable(personToUpdate, fullPersonDTO)){
++            return "La actualizacion no es necesaria, los campos recibidos son iguales a los del registro";
++        }
++
++        FullPersonDTO oldValues = new FullPersonDTO(personToUpdate);
++
++        personToUpdate.update(fullPersonDTO);
++        personRepository.save(personToUpdate);
++
++        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.UPDATE, "persons", oldValues, personToUpdate );
++        auditLogService.create(auditLog);
++
++        return "Registro actualizado con exito!";
++    }
++
++    public boolean isUpdatable(PersonEntity person, FullPersonDTO personDTO){
++        int count = 0;
++
++        if(!personDTO.firstName().isBlank() && !personDTO.firstName().equals(person.getFirstName())){
++            count ++;
++        }else if(!personDTO.lastName().isBlank() && !personDTO.lastName().equals(person.getLastName())){
++            count ++;
++        }else if(!personDTO.email().isBlank() && !personDTO.email().equals(person.getEmail())){
++            count ++;
++        }else if(!personDTO.phone().isBlank() && !personDTO.phone().equals(person.getPhone())){
++            count ++;
++        }
++        return count > 0;
++    }
++
++    public List<FullPersonDTO> getAllData(Pageable page, HttpServletRequest request) {
++
++        List<FullPersonDTO> personsList = personRepository.findAll(page).map(FullPersonDTO::new).toList();
++
++        UserEntity author = jwtUtils.getUserFromRequest(request);
++        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.SELECT, "persons", personsList);
++        auditLogService.create(auditLog);
++
++        return personsList;
++    }
++
++    public FullPersonDTO getSingleData(Long id, HttpServletRequest request) {
++        FullPersonDTO selectPerson =  new FullPersonDTO(personRepository.findById(id)
++                .orElseThrow(()->new MyIntegrityValidation("El registro indicado no existe",400)));
++
++        UserEntity author =  jwtUtils.getUserFromRequest(request);
++
++        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.SELECT, "persons", selectPerson);
++        auditLogService.create(auditLog);
++
++        return selectPerson;
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/create/CreatePhoneValidation.java b/src/main/java/com/Ar_Tech/validations/persons/create/CreatePhoneValidation.java
+new file mode 100644
+index 0000000..86e66ec
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/create/CreatePhoneValidation.java
+@@ -0,0 +1,25 @@
++package com.Ar_Tech.validations.persons.create;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.infra.errors.MyIntegrityValidation;
++import com.Ar_Tech.validations.persons.create.IPersonValidation;
++import org.springframework.beans.factory.annotation.Qualifier;
++import org.springframework.stereotype.Component;
++
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++@Component
++@Qualifier("createPersonValidators")
++public class CreatePhoneValidation implements IPersonValidation {
++    @Override
++    public void validate(PersonDTO personDTO) {
++        Pattern pattern = Pattern.compile("\\d{10}");
++        Matcher matcher = pattern.matcher(personDTO.phone());
++
++        if(!matcher.matches()){
++            throw new MyIntegrityValidation("El numero de telefono debe contener 10 digitos",400);
++        }
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/create/CreateUniqueEmailValidation.java b/src/main/java/com/Ar_Tech/validations/persons/create/CreateUniqueEmailValidation.java
+new file mode 100644
+index 0000000..1cd324c
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/create/CreateUniqueEmailValidation.java
+@@ -0,0 +1,23 @@
++package com.Ar_Tech.validations.persons.create;
++
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.infra.errors.MyIntegrityValidation;
++import com.Ar_Tech.repositories.PersonRepository;
++import com.Ar_Tech.validations.persons.create.IPersonValidation;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Qualifier;
++import org.springframework.stereotype.Component;
++
++@Component
++@Qualifier("createPersonValidators")
++public class CreateUniqueEmailValidation implements IPersonValidation {
++
++    @Autowired
++    private PersonRepository personRepository;
++
++    @Override
++    public void validate(PersonDTO personDTO) {
++        if(personRepository.existsByEmail(personDTO.email()))
++            throw new MyIntegrityValidation("El email ya se encuentra registrado en con otra cuenta, favor de revisar!", 400);
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/create/CreateUniqueNameLastnameValidation.java b/src/main/java/com/Ar_Tech/validations/persons/create/CreateUniqueNameLastnameValidation.java
+new file mode 100644
+index 0000000..ed95951
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/create/CreateUniqueNameLastnameValidation.java
+@@ -0,0 +1,28 @@
++package com.Ar_Tech.validations.persons.create;
++
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.infra.errors.MyIntegrityValidation;
++import com.Ar_Tech.models.PersonEntity;
++import com.Ar_Tech.repositories.PersonRepository;
++import com.Ar_Tech.validations.persons.create.IPersonValidation;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Qualifier;
++import org.springframework.stereotype.Component;
++
++import java.util.List;
++
++@Component
++@Qualifier("createPersonValidators")
++public class CreateUniqueNameLastnameValidation implements IPersonValidation {
++
++    @Autowired
++    private PersonRepository personRepository;
++
++    @Override
++    public void validate(PersonDTO personDTO) {
++        List<PersonEntity> isPerson = personRepository.findByFirstNameAndLastName(personDTO.firstName(), personDTO.lastName());
++        if(!isPerson.isEmpty()){
++            throw new MyIntegrityValidation("El nombre y apellido ya se encuentra registrado",400);
++        }
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/create/IPersonValidation.java b/src/main/java/com/Ar_Tech/validations/persons/create/IPersonValidation.java
+new file mode 100644
+index 0000000..72a1a58
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/create/IPersonValidation.java
+@@ -0,0 +1,9 @@
++package com.Ar_Tech.validations.persons.create;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++
++public interface IPersonValidation {
++
++    void validate(PersonDTO personDTO);
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/update/IUpdatePersonValidation.java b/src/main/java/com/Ar_Tech/validations/persons/update/IUpdatePersonValidation.java
+new file mode 100644
+index 0000000..3924496
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/update/IUpdatePersonValidation.java
+@@ -0,0 +1,9 @@
++package com.Ar_Tech.validations.persons.update;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++
++public interface IUpdatePersonValidation {
++
++    void validate(FullPersonDTO personDTO);
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/update/UpdatePhoneValidation.java b/src/main/java/com/Ar_Tech/validations/persons/update/UpdatePhoneValidation.java
+new file mode 100644
+index 0000000..4970e54
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/update/UpdatePhoneValidation.java
+@@ -0,0 +1,28 @@
++package com.Ar_Tech.validations.persons.update;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.infra.errors.MyIntegrityValidation;
++import com.Ar_Tech.validations.persons.create.IPersonValidation;
++import org.springframework.beans.factory.annotation.Qualifier;
++import org.springframework.stereotype.Component;
++
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++@Component
++@Qualifier("createPersonValidators")
++public class UpdatePhoneValidation implements IUpdatePersonValidation {
++    @Override
++    public void validate(FullPersonDTO personDTO) {
++        if (personDTO.phone() == null)
++            return;
++
++        Pattern pattern = Pattern.compile("\\d{10}");
++        Matcher matcher = pattern.matcher(personDTO.phone());
++
++        if(!matcher.matches()){
++            throw new MyIntegrityValidation("El numero de telefono debe contener 10 digitos",400);
++        }
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/update/UpdateUniqueEmailValidation.java b/src/main/java/com/Ar_Tech/validations/persons/update/UpdateUniqueEmailValidation.java
+new file mode 100644
+index 0000000..087f8bd
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/update/UpdateUniqueEmailValidation.java
+@@ -0,0 +1,27 @@
++package com.Ar_Tech.validations.persons.update;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.infra.errors.MyIntegrityValidation;
++import com.Ar_Tech.repositories.PersonRepository;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Qualifier;
++import org.springframework.stereotype.Component;
++
++@Component
++@Qualifier("createPersonValidators")
++public class UpdateUniqueEmailValidation implements IUpdatePersonValidation {
++
++    @Autowired
++    private PersonRepository personRepository;
++
++    @Override
++    public void validate(FullPersonDTO personDTO) {
++        if(personDTO.email() == null)
++            return;
++
++        if(personRepository.existsByEmailAndIdNot(personDTO.email(), personDTO.id())){
++            throw new MyIntegrityValidation("El email ya se encuentra registrado, favor de verificar",400);
++        }
++    }
++}
+diff --git a/src/main/java/com/Ar_Tech/validations/persons/update/UpdateUniqueNameLastnameValidation.java b/src/main/java/com/Ar_Tech/validations/persons/update/UpdateUniqueNameLastnameValidation.java
+new file mode 100644
+index 0000000..ba3b25e
+--- /dev/null
++++ b/src/main/java/com/Ar_Tech/validations/persons/update/UpdateUniqueNameLastnameValidation.java
+@@ -0,0 +1,43 @@
++package com.Ar_Tech.validations.persons.update;
++
++import com.Ar_Tech.dto.persons.FullPersonDTO;
++import com.Ar_Tech.dto.persons.PersonDTO;
++import com.Ar_Tech.infra.errors.MyIntegrityValidation;
++import com.Ar_Tech.models.PersonEntity;
++import com.Ar_Tech.models.UserEntity;
++import com.Ar_Tech.repositories.PersonRepository;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Qualifier;
++import org.springframework.stereotype.Component;
++
++@Component
++@Qualifier("updatePersonValidators")
++public class UpdateUniqueNameLastnameValidation implements IUpdatePersonValidation {
++
++    @Autowired
++    private PersonRepository personRepository;
++
++    @Override
++    public void validate(FullPersonDTO personDTO) {
++        PersonEntity personToUpdate = personRepository.findById(personDTO.id())
++                .orElseThrow(()-> new MyIntegrityValidation("El registro indicado no existe, favor de verificar",400));
++
++        String firstName = personDTO.firstName() != null
++                ? personDTO.firstName()
++                : personToUpdate.getFirstName();
++
++        String lastName = personDTO.lastName() != null
++                ? personDTO.lastName()
++                : personToUpdate.getLastName();
++
++        boolean exists = personRepository.existsByFirstNameAndLastNameAndIdNot(
++                firstName,
++                lastName,
++                personDTO.id()
++        );
++
++        if (exists) {
++            throw new MyIntegrityValidation("La persona ya existe", 400);
++        }
++    }
++}

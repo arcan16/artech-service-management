@@ -29,7 +29,7 @@ public class Returns {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
     @NotNull
-    private Client client;
+    private ClientEntity client;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "return_type", nullable = false)

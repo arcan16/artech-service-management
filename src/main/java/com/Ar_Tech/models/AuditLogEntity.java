@@ -53,39 +53,26 @@ public class AuditLogEntity {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tablename, PersonEntity newPerson) {
+    public AuditLogEntity(UserEntity author, String userSnapshot, EAuditAction action, String tableName, Long recordId,
+                          String oldValues, String newValues) {
         this.user = author;
-        this.userSnapshot = author.getUsername()    ;
-        this.action = eAuditAction;
-        this.tableName = tablename;
-        this.recordId = newPerson.getId();
-        this.newValues = new ObjectMapper().writeValueAsString(newPerson);
-    }
-
-    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tableName, FullPersonDTO oldValues, PersonEntity personToUpdate) {
-        this.user = author;
-        this.userSnapshot = author.getUsername();
-        this.action = eAuditAction;
+        this.userSnapshot = userSnapshot;
+        this.action = action;
         this.tableName = tableName;
-        this.recordId = personToUpdate.getId();
-        this.oldValues = new ObjectMapper().writeValueAsString(oldValues);
-        this.newValues = new ObjectMapper().writeValueAsString(personToUpdate);
-    }
-
-    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tableName, FullPersonDTO selectPerson) {
-        this.user = author;
-        this.userSnapshot = author.getUsername();
-        this.action = eAuditAction;
-        this.tableName = tableName;
-        this.recordId = selectPerson.id();
-        this.newValues = new ObjectMapper().writeValueAsString(selectPerson);
-    }
-
-    public AuditLogEntity(UserEntity author, EAuditAction eAuditAction, String tableName, List<FullPersonDTO> personsList) {
-        this.user = author;
-        this.userSnapshot = author.getUsername();
-        this.action = eAuditAction;
-        this.tableName = tableName;
-        this.newValues = new ObjectMapper().writeValueAsString(personsList);
+        if(recordId != null)
+            this.recordId = recordId;
+        if(action.equals(EAuditAction.INSERT)) {
+            this.newValues = new ObjectMapper().writeValueAsString(newValues);
+            this.oldValues = null;
+        }else if(action.equals(EAuditAction.UPDATE)) {
+            this.newValues = new ObjectMapper().writeValueAsString(newValues);
+            this.oldValues = new ObjectMapper().writeValueAsString(oldValues);
+        }else if(action.equals(EAuditAction.DELETE)) {
+            this.oldValues = new ObjectMapper().writeValueAsString(oldValues);
+            this.newValues = null;
+        }else if(action.equals(EAuditAction.SELECT)) {
+            this.oldValues = null;
+            this.newValues = null;
+        }
     }
 }

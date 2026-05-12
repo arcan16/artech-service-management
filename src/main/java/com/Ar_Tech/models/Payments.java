@@ -34,7 +34,7 @@ public class Payments {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
     @NotNull
-    private Client client;
+    private ClientEntity client;
 
     @Column(name = "amount", precision = 10, scale = 2, nullable = false)
     @DecimalMin(value = "0.01")

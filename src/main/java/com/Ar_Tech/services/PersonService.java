@@ -12,19 +12,16 @@ import com.Ar_Tech.repositories.PersonRepository;
 import com.Ar_Tech.repositories.UserRepository;
 import com.Ar_Tech.validations.persons.create.IPersonValidation;
 import com.Ar_Tech.validations.persons.update.IUpdatePersonValidation;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 public class PersonService {
@@ -49,20 +46,23 @@ public class PersonService {
     private List<IUpdatePersonValidation> updateValidators = new ArrayList<>();
 
     public FullPersonDTO create(PersonDTO personDTO, HttpServletRequest request){
-        createValidators.forEach(i->i.validate(personDTO));
+        return new FullPersonDTO(createEntity(personDTO, request));
+    }
 
-        UserEntity author = jwtUtils.getUserFromRequest(request);
+    public PersonEntity createEntity(PersonDTO personDTO, HttpServletRequest request){
+        createValidators.forEach(i->i.validate(personDTO));
 
         PersonEntity newPerson = new PersonEntity(personDTO);
 
         personRepository.save(newPerson);
 
-        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.INSERT, "persons", newPerson);
 
-        auditLogService.create(auditLog);
+        auditLogService.create(request, EAuditAction.INSERT, "PERSONS", newPerson.getId(), null,
+                new ObjectMapper().writeValueAsString(newPerson));
 
-        return new FullPersonDTO(newPerson);
+        return newPerson;
     }
+
 
 
     public void delete(Long id, HttpServletRequest request){
@@ -77,14 +77,13 @@ public class PersonService {
 
         personRepository.delete(personToDelete);
 
-        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.DELETE, "persons", personToDelete);
-        auditLogService.create(auditLog);
+        auditLogService.create(request, EAuditAction.DELETE, "PERSONS", personToDelete.getId(),
+                new ObjectMapper().writeValueAsString(personToDelete), null);
     }
 
     public String update(@Valid FullPersonDTO fullPersonDTO, HttpServletRequest request) {
         updateValidators.forEach(i-> i.validate(fullPersonDTO));
 
-        UserEntity author = jwtUtils.getUserFromRequest(request);
         PersonEntity personToUpdate = personRepository.findById(fullPersonDTO.id())
                 .orElseThrow(()->new MyIntegrityValidation("El registro indicado no existe",400));
 
@@ -97,8 +96,8 @@ public class PersonService {
         personToUpdate.update(fullPersonDTO);
         personRepository.save(personToUpdate);
 
-        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.UPDATE, "persons", oldValues, personToUpdate );
-        auditLogService.create(auditLog);
+        auditLogService.create(request, EAuditAction.UPDATE, "PERSONS", personToUpdate.getId(),
+                new ObjectMapper().writeValueAsString(oldValues), new ObjectMapper().writeValueAsString(personToUpdate));
 
         return "Registro actualizado con exito!";
     }
@@ -122,9 +121,8 @@ public class PersonService {
 
         List<FullPersonDTO> personsList = personRepository.findAll(page).map(FullPersonDTO::new).toList();
 
-        UserEntity author = jwtUtils.getUserFromRequest(request);
-        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.SELECT, "persons", personsList);
-        auditLogService.create(auditLog);
+        auditLogService.create(request, EAuditAction.SELECT, "PERSONS", null,
+                new ObjectMapper().writeValueAsString(personsList), null);
 
         return personsList;
     }
@@ -133,10 +131,8 @@ public class PersonService {
         FullPersonDTO selectPerson =  new FullPersonDTO(personRepository.findById(id)
                 .orElseThrow(()->new MyIntegrityValidation("El registro indicado no existe",400)));
 
-        UserEntity author =  jwtUtils.getUserFromRequest(request);
-
-        AuditLogEntity auditLog = new AuditLogEntity(author, EAuditAction.SELECT, "persons", selectPerson);
-        auditLogService.create(auditLog);
+        auditLogService.create(request, EAuditAction.SELECT, "PERSONS", null,
+                new ObjectMapper().writeValueAsString(selectPerson), null);
 
         return selectPerson;
     }

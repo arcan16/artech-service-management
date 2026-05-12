@@ -1,6 +1,10 @@
 package com.Ar_Tech.models;
 
+import com.Ar_Tech.dto.clients.ClientFullDTO;
+import com.Ar_Tech.dto.clients.FullClientDTO;
+import com.Ar_Tech.dto.persons.FullPersonDTO;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +20,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Client {
+public class ClientEntity {
 
     @Id
     private Long id;
@@ -38,4 +42,17 @@ public class Client {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public ClientEntity(String customerCode, ClientFullDTO clientData, PersonEntity person) {
+        this.person = person;
+        this.customerCode = customerCode;
+
+        if(clientData.creditLimit() != null)
+            this.creditLimit = clientData.creditLimit();
+    }
+
+    public void update(@Valid FullClientDTO clientData) {
+        if(clientData.creditLimit() != null)
+            this.creditLimit = clientData.creditLimit();
+    }
 }

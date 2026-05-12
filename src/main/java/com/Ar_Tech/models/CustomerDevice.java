@@ -1,7 +1,5 @@
 
 package com.Ar_Tech.models;
-import com.Ar_Tech.models.Client;
-import com.Ar_Tech.models.Device;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,7 +21,7 @@ public class CustomerDevice {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
-    private Client client;
+    private ClientEntity client;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "device_id", nullable = false)
