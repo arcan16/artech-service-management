@@ -1,13 +1,17 @@
 package com.Ar_Tech.models;
 
+import com.Ar_Tech.dto.users.UserDTO;
+import com.Ar_Tech.dto.users.UserFullDTO;
 import com.Ar_Tech.models.enums.EUserRole;
 import com.Ar_Tech.models.enums.EUserStatus;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 
@@ -48,4 +52,26 @@ public class UserEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    public UserEntity(PersonEntity personCreated, @Valid UserDTO userDTO, String password) {
+        this.person = personCreated;
+        this.username = userDTO.username();
+        this.password = password;
+        this.status = EUserStatus.ACTIVE;
+        this.role = userDTO.role();
+    }
+
+    public void update(@Valid UserFullDTO userDTO, PasswordEncoder passwordEncoder) {
+        if(userDTO.username() != null && !userDTO.username().isEmpty()){
+            this.username = userDTO.username();
+        }
+        if(userDTO.password() != null && !userDTO.password().isEmpty()){
+            this.password = passwordEncoder.encode(userDTO.password());
+        }
+        if(userDTO.status() != null)
+            this.status =  userDTO.status();
+
+        if(userDTO.role() != null){
+            this.role = userDTO.role();
+        }
+    }
 }

@@ -1,7 +1,9 @@
 package com.Ar_Tech.dto.persons;
 
 import com.Ar_Tech.dto.clients.FullClientDTO;
+import com.Ar_Tech.dto.users.UserFullDTO;
 import com.Ar_Tech.models.PersonEntity;
+import com.Ar_Tech.models.UserEntity;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
@@ -21,5 +23,11 @@ public record FullPersonDTO(@NotNull Long id,
         this(client.id(), client.firstName() != null ? client.firstName() : null,
                 client.lastName() != null ? client.lastName() : null, client.email() != null ? client.email() : null,
                 client.phone() != null ? client.phone() : null, null);
+    }
+
+    public FullPersonDTO(UserFullDTO data) {
+        this(data.id(), data.firstName() != null ? data.firstName() : null,
+                data.lastName() != null ? data.lastName() : null, data.email() != null ? data.email() : null,
+                data.phone() != null ? data.phone() : null, null);
     }
 }

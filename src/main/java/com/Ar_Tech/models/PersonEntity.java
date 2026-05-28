@@ -48,16 +48,16 @@ public class PersonEntity {
     }
 
     public void update(@Valid FullPersonDTO person) {
-        if(this.firstName != null)
+        if(person.firstName() != null)
             this.firstName = person.firstName();
 
-        if(this.lastName != null)
+        if(person.lastName() != null)
             this.lastName = person.lastName();
 
-        if(this.email != null)
+        if(person.email() != null)
             this.email = person.email();
 
-        if(this.phone != null)
+        if(person.phone() != null)
             this.phone = person.phone();
     }
 }

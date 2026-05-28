@@ -31,7 +31,7 @@ public interface PersonRepository extends JpaRepository<PersonEntity, Long> {
 
     Boolean findByFirstNameAndLastNameAndIdNot(@NonNull @NotBlank(message = "First name is required") String firstName, @NonNull @NotBlank(message = "Last name is required") String lastName, @NotNull Long id);
 
-    Boolean existsByEmailAndIdNot(String email, @NotNull Long id);
+    boolean existsByEmailAndIdNot(@Email(message = "Email must be valid") @Size(max = 150, message = "Email must not exceed 150 characters") String email, @NotNull Long id);
 
     boolean existsByFirstNameAndLastNameAndIdNot(String firstName, String lastName, @NotNull Long id);
 }

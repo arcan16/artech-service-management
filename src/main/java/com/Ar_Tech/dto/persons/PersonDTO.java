@@ -1,6 +1,8 @@
 package com.Ar_Tech.dto.persons;
 
 import com.Ar_Tech.dto.clients.ClientFullDTO;
+import com.Ar_Tech.dto.users.UserDTO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -34,5 +36,9 @@ public record PersonDTO(@NonNull
                         LocalDateTime createdAt) {
     public PersonDTO(ClientFullDTO clientData) {
         this(clientData.firstName(), clientData.lastName(), clientData.email(), clientData.phone(), null);
+    }
+
+    public PersonDTO(UserDTO user) {
+        this(user.firstName(), user.lastName(), user.email(), user.phone(), null);
     }
 }

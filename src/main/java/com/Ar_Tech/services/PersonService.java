@@ -86,16 +86,12 @@ public class PersonService {
 
         PersonEntity personToUpdate = personRepository.findById(fullPersonDTO.id())
                 .orElseThrow(()->new MyIntegrityValidation("El registro indicado no existe",400));
-
         if(!isUpdatable(personToUpdate, fullPersonDTO)){
             return "La actualizacion no es necesaria, los campos recibidos son iguales a los del registro";
         }
-
         FullPersonDTO oldValues = new FullPersonDTO(personToUpdate);
-
         personToUpdate.update(fullPersonDTO);
         personRepository.save(personToUpdate);
-
         auditLogService.create(request, EAuditAction.UPDATE, "PERSONS", personToUpdate.getId(),
                 new ObjectMapper().writeValueAsString(oldValues), new ObjectMapper().writeValueAsString(personToUpdate));
 
@@ -105,13 +101,13 @@ public class PersonService {
     public boolean isUpdatable(PersonEntity person, FullPersonDTO personDTO){
         int count = 0;
 
-        if(!personDTO.firstName().isBlank() && !personDTO.firstName().equals(person.getFirstName())){
+        if(personDTO.firstName()!= null && !personDTO.firstName().isBlank() && !personDTO.firstName().equals(person.getFirstName())){
             count ++;
-        }else if(!personDTO.lastName().isBlank() && !personDTO.lastName().equals(person.getLastName())){
+        }else if(personDTO.lastName()!= null && !personDTO.lastName().isBlank() && !personDTO.lastName().equals(person.getLastName())){
             count ++;
-        }else if(!personDTO.email().isBlank() && !personDTO.email().equals(person.getEmail())){
+        }else if(personDTO.email()!= null && !personDTO.email().isBlank() && !personDTO.email().equals(person.getEmail())){
             count ++;
-        }else if(!personDTO.phone().isBlank() && !personDTO.phone().equals(person.getPhone())){
+        }else if(personDTO.phone()!= null && !personDTO.phone().isBlank() && !personDTO.phone().equals(person.getPhone())){
             count ++;
         }
         return count > 0;

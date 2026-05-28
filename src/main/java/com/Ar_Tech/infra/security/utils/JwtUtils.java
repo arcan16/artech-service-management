@@ -29,7 +29,7 @@ public class JwtUtils {
     @Autowired
     private UserRepository userRepository;
 
-    public String generateAccessToken(String username){
+    public String generateAccessToken(String username) {
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
@@ -38,42 +38,41 @@ public class JwtUtils {
                 .compact();
     }
 
-    public SecretKey getSignature(){
-        byte [] key = Decoders.BASE64.decode(secretKey);
+    public SecretKey getSignature() {
+        byte[] key = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(key);
     }
 
-    public boolean isValidToken(String token){
+    public boolean isValidToken(String token) {
         try {
             Jwts.parser().verifyWith(getSignature()).build().parseSignedClaims(token);
             return true;
-        }catch (Exception e){
+        } catch (Exception e) {
             return false;
         }
     }
 
-    public String getUsernameFromToken(String token){
+    public String getUsernameFromToken(String token) {
         return getClaim(token, Claims::getSubject);
     }
 
-    public <T> T getClaim(String token, Function<Claims, T> claimsTFunction){
+    public <T> T getClaim(String token, Function<Claims, T> claimsTFunction) {
         Claims claims = getAllClaims(token);
         return claimsTFunction.apply(claims);
     }
 
-    public Claims getAllClaims(String token){
+    public Claims getAllClaims(String token) {
         Jws<Claims> claimsJws = Jwts.parser().verifyWith(getSignature()).build().parseSignedClaims(token);
         return claimsJws.getPayload();
     }
 
-    public UserEntity getUserFromToken(String token){
+    private UserEntity getUserFromToken(String token) {
         String username = getUsernameFromToken(token);
 
         return userRepository.findByUsername(username)
-                .orElseThrow(()-> new UsernameNotFoundException("El usuario indicado en el token no existe"));
-
+                .orElseThrow(() -> new UsernameNotFoundException("El usuario indicado en el token no existe"));
     }
-    public UserEntity getUserFromRequest(HttpServletRequest request) {
+        public UserEntity getUserFromRequest(HttpServletRequest request) {
         String tokenHeader = request.getHeader("Authorization");
         String token = tokenHeader.substring(7);
         return getUserFromToken(token);
