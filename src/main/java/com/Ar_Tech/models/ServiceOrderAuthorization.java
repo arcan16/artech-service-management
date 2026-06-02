@@ -21,7 +21,7 @@ public class ServiceOrderAuthorization {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_order_id", nullable = false)
-    private ServiceOrder serviceOrder;
+    private ServiceOrderEntity serviceOrder;
 
     @Column(name = "estimated_cost", precision = 10, scale = 2)
     private BigDecimal estimatedCost;

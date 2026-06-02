@@ -20,7 +20,7 @@ public class ServiceOrderParts {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_order_id", nullable = false)
-    private ServiceOrder serviceOrder;
+    private ServiceOrderEntity serviceOrder;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", nullable = false)

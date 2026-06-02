@@ -5,6 +5,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -19,6 +20,17 @@ public class MyErrorHandler {
         ObjectNode response = objectMapper.createObjectNode();
 
         response.put("message", exception.getMessage());
+        response.put("status", 400);
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<?> myMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e){
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode response = objectMapper.createObjectNode();
+
+        response.put("message", e.getMessage());
         response.put("status", 400);
 
         return ResponseEntity.badRequest().body(response);

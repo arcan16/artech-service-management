@@ -23,7 +23,7 @@ public class ServiceOrderHistory {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_order_id")
-    private ServiceOrder serviceOrder;
+    private ServiceOrderEntity serviceOrder;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

@@ -1,6 +1,9 @@
 package com.Ar_Tech.models;
 
+import com.Ar_Tech.dto.device.CreateDeviceDTO;
+import com.Ar_Tech.dto.device.UpdateDeviceDTO;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Device {
+public class DeviceEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,4 +33,16 @@ public class Device {
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    public DeviceEntity(@Valid CreateDeviceDTO deviceDTO) {
+        this.brand = deviceDTO.brand();
+        this.model = deviceDTO.model();
+    }
+
+    public void update(@Valid UpdateDeviceDTO deviceDTO) {
+        if(deviceDTO.brand() != null)
+            this.brand = deviceDTO.brand();
+        if(deviceDTO.model() != null)
+            this.model = deviceDTO.model();
+    }
 }

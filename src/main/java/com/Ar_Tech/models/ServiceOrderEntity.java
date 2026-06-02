@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ServiceOrder {
+public class ServiceOrderEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +26,7 @@ public class ServiceOrder {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_device_id", nullable = false)
-    private CustomerDevice customerDevice;
+    private CustomerDeviceEntity customerDevice;
 
     @Lob
     @Column(name = "problem_description", columnDefinition = "TEXT")

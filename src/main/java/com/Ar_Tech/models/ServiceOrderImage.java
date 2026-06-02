@@ -20,7 +20,7 @@ public class ServiceOrderImage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_order_id", nullable = false)
-    private ServiceOrder serviceOrder;
+    private ServiceOrderEntity serviceOrder;
 
     @Column(name = "image_path", nullable = false, length = 500)
     private String imagePath;

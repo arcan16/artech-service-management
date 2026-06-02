@@ -1,6 +1,6 @@
 package com.Ar_Tech.repositories;
 
-import com.Ar_Tech.models.ServiceOrder;
+import com.Ar_Tech.models.ServiceOrderEntity;
 import com.Ar_Tech.models.enums.EServiceOrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,21 +11,21 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface ServiceOrderRepository extends JpaRepository<ServiceOrder, Long> {
+public interface ServiceOrderRepository extends JpaRepository<ServiceOrderEntity, Long> {
 
-    Optional<ServiceOrder> findByFolio(String folio);
+    Optional<ServiceOrderEntity> findByFolio(String folio);
     
-    Page<ServiceOrder> findByStatus(EServiceOrderStatus status, Pageable pageable);
+    Page<ServiceOrderEntity> findByStatus(EServiceOrderStatus status, Pageable pageable);
     
-    Page<ServiceOrder> findByAssignedToId(Long assignedToId, Pageable pageable);
+    Page<ServiceOrderEntity> findByAssignedToId(Long assignedToId, Pageable pageable);
     
-    Page<ServiceOrder> findByCustomerDeviceClientId(Long clientId, Pageable pageable);
+    Page<ServiceOrderEntity> findByCustomerDeviceClientId(Long clientId, Pageable pageable);
     
     @EntityGraph(attributePaths = {"customerDevice", "assignedTo", "createdBy"})
-    Page<ServiceOrder> findServiceOrderByStatus(EServiceOrderStatus status, Pageable pageable);
+    Page<ServiceOrderEntity> findServiceOrderByStatus(EServiceOrderStatus status, Pageable pageable);
     
     @EntityGraph(attributePaths = {"customerDevice.device", "serviceOrderParts", "serviceOrderHistory"})
-    Optional<ServiceOrder> findById(Long id);
+    Optional<ServiceOrderEntity> findById(Long id);
     
-    Page<ServiceOrder> findByCreatedByIdAndStatus(Long userId, EServiceOrderStatus status, Pageable pageable);
+    Page<ServiceOrderEntity> findByCreatedByIdAndStatus(Long userId, EServiceOrderStatus status, Pageable pageable);
 }

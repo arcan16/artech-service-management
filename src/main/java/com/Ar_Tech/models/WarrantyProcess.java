@@ -23,7 +23,7 @@ public class WarrantyProcess {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_order_id", nullable = true)
-    private ServiceOrder serviceOrder;
+    private ServiceOrderEntity serviceOrder;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "resolution")

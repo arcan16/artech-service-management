@@ -799,7 +799,7 @@ index 608c04e..2034570 100644
 +++ b/src/main/java/com/Ar_Tech/models/ServiceOrderParts.java
 @@ -1,7 +1,5 @@
  package com.Ar_Tech.models;
--import com.Ar_Tech.models.ServiceOrder;
+-import com.Ar_Tech.models.ServiceOrderEntity;
 -import com.Ar_Tech.models.PartsProducts;
 -import com.Ar_Tech.models.enums.PartStatus;
 +import com.Ar_Tech.models.enums.EPartStatus;
@@ -822,7 +822,7 @@ index 14c4f8b..c387417 100644
 @@ -1,8 +1,6 @@
  package com.Ar_Tech.models;
  
--import com.Ar_Tech.models.ServiceOrder;
+-import com.Ar_Tech.models.ServiceOrderEntity;
 -import com.Ar_Tech.models.PartsProducts;
 -import com.Ar_Tech.models.enums.UsageType;
 +import com.Ar_Tech.models.enums.EUsageType;
@@ -880,7 +880,7 @@ index 8eec9c6..f89eb2e 100644
 @@ -1,7 +1,5 @@
  package com.Ar_Tech.models;
 -import com.Ar_Tech.models.Returns;
--import com.Ar_Tech.models.ServiceOrder;
+-import com.Ar_Tech.models.ServiceOrderEntity;
 -import com.Ar_Tech.models.enums.WarrantyResolution;
 +import com.Ar_Tech.models.enums.EWarrantyResolution;
  import jakarta.persistence.*;
@@ -1412,7 +1412,7 @@ index b9fe3d8..f15cd6b 100644
 @@ -1,7 +1,7 @@
  package com.Ar_Tech.repositories;
  
- import com.Ar_Tech.models.ServiceOrder;
+ import com.Ar_Tech.models.ServiceOrderEntity;
 -import com.Ar_Tech.models.enums.ServiceOrderStatus;
 +import com.Ar_Tech.models.enums.EServiceOrderStatus;
  import org.springframework.data.domain.Page;
