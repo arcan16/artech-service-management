@@ -1386,7 +1386,7 @@ index ca4fd65..b622dfa 100644
  package com.Ar_Tech.repositories;
  
 -import com.Ar_Tech.models.AuditLog;
- import com.Ar_Tech.models.ServiceOrderImage;
+ import com.Ar_Tech.models.ServiceOrderImageEntity;
 -import com.Ar_Tech.models.enums.ImageType;
 -import org.springframework.data.domain.Page;
 -import org.springframework.data.domain.Pageable;
