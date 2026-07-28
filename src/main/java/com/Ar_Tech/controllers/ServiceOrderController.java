@@ -73,7 +73,7 @@ public class ServiceOrderController {
     // Elimina registro de la BDD
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteServiceOrder(@PathVariable Long id,
-                                                HttpServletRequest request){
+                                                HttpServletRequest request) throws JsonProcessingException {
 
         servOrderService.delete(id, request);
 
@@ -89,8 +89,4 @@ public class ServiceOrderController {
 
         return ResponseEntity.ok().body("{\"message\":\"Registro actualizado correctamente\"}");
     }
-
-    /**
-     * Agregar registro de bitácora a cada transacción realizada en la base de datos
-     */
 }

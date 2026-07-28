@@ -2,10 +2,15 @@ package com.Ar_Tech.services;
 
 import com.Ar_Tech.dto.serviceOrderImage.CreateServiceOrderImageMetaDataDTO;
 import com.Ar_Tech.dto.serviceOrderImage.CreationServiceOrderImageDTO;
+import com.Ar_Tech.dto.serviceOrderImage.IImageMetadata;
+import com.Ar_Tech.dto.serviceOrderImage.ImageWithMetadataDTO;
 import com.Ar_Tech.infra.errors.MyIntegrityValidation;
 import com.Ar_Tech.models.ServiceOrderEntity;
 import com.Ar_Tech.models.UserEntity;
 import com.Ar_Tech.models.enums.EImageType;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,8 +19,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Comparator;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -94,5 +99,48 @@ public class ImageService {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /// Realiza la validación de información de los metadatos y las imágenes. Después crea una lista con objetos que contengan
+    /// tanto la imagen como su información
+    public List<ImageWithMetadataDTO> validateAndCreateImageWithDataList(List<MultipartFile> images,
+                                                                         List<? extends IImageMetadata> imagesMetadata){
+        List<ImageWithMetadataDTO> dataList = new ArrayList<>();
+
+        // 1. Validar primero que las cantidades coincidan. Si no, lanzar error directo.
+        if (images.size() != imagesMetadata.size()) {
+            throw new MyIntegrityValidation("Error: La cantidad de imágenes no coincide con los metadatos", 400);
+        }
+
+        // 2. Indexar los metadatos en un Map por nombre para búsquedas O(1)
+        Map<String, ? extends IImageMetadata> metadataMap = imagesMetadata.stream()
+                .collect(Collectors.toMap(
+                        IImageMetadata::name,
+                        meta -> meta
+                ));
+
+        // 3. Validar la coherencia de cada imagen y crear el objeto
+        images.forEach(image -> {
+            String fileName = image.getOriginalFilename();
+            if (!metadataMap.containsKey(fileName)) {
+                throw new MyIntegrityValidation("Error: Metadatos incorrectos para la imagen: " + fileName, 400);
+            }
+
+            dataList.add(new ImageWithMetadataDTO(image, metadataMap.get(fileName)));
+        });
+
+        if(dataList.isEmpty()){
+            return null;
+        }
+
+        return dataList;
+    }
+
+    /// Deserializa variables JSON y retorna un objeto con la información convertida en un objeto
+    public <T> List<T> readJsonData(String jsonData, Class<T> clazz) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        JavaType type = mapper.getTypeFactory().constructCollectionType(List.class, clazz);
+
+        return mapper.readValue(jsonData, type);
     }
 }

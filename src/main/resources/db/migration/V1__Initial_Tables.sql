@@ -279,6 +279,8 @@ CREATE TABLE service_order_images(
 
     service_order_id BIGINT NOT NULL,
 
+    service_order_history_id BIGINT NULL,
+
     image_path VARCHAR(500) NOT NULL, -- ruta o URL
     image_type ENUM('RECEPTION','DIAGNOSIS','REPAIR','DELIVERY') NOT NULL,
 
@@ -290,6 +292,7 @@ CREATE TABLE service_order_images(
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (service_order_id) REFERENCES service_orders(id),
+    FOREIGN KEY (service_order_history_id) REFERENCES service_order_history(id),
     FOREIGN KEY (taken_by) REFERENCES users(id) ON DELETE SET NULL,
 
     INDEX idx_order (service_order_id),

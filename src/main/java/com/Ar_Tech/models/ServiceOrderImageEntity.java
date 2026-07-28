@@ -29,6 +29,10 @@ public class ServiceOrderImageEntity {
     @JoinColumn(name = "service_order_id", nullable = false)
     private ServiceOrderEntity serviceOrder;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_order_history_id")
+    private ServiceOrderHistoryEntity serviceOrderHistory;
+
     @Column(name = "image_path", nullable = false, length = 500)
     private String imagePath;
 
@@ -62,6 +66,17 @@ public class ServiceOrderImageEntity {
     public ServiceOrderImageEntity(ServiceOrderEntity serviceOrder, ImageWithMetadataDTO imageWithMetadata,
                                    UserEntity author, Path imagePath) {
         this.serviceOrder = serviceOrder;
+        this.imagePath = imagePath.toString();
+        this.imageType = imageWithMetadata.imageType();
+        this.description = imageWithMetadata.description();
+        this.takenBy = author;
+        this.takenBySnapshot = author.getPerson().getFirstName() + " " + author.getPerson().getLastName();
+    }
+
+    public ServiceOrderImageEntity(ServiceOrderEntity serviceOrder, ImageWithMetadataDTO imageWithMetadata,
+                                   UserEntity author, Path imagePath, ServiceOrderHistoryEntity serviceOrderHistory) {
+        this.serviceOrder = serviceOrder;
+        this.serviceOrderHistory = serviceOrderHistory;
         this.imagePath = imagePath.toString();
         this.imageType = imageWithMetadata.imageType();
         this.description = imageWithMetadata.description();

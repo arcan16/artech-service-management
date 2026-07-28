@@ -1,21 +1,26 @@
 package com.Ar_Tech.models;
 
 
+import com.Ar_Tech.dto.serviceOrderHistory.CreateServiceOrderHistoryDTO;
 import com.Ar_Tech.models.enums.EServiceOrderStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "service_order_history")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ServiceOrderHistory {
+public class ServiceOrderHistoryEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,4 +47,18 @@ public class ServiceOrderHistory {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "serviceOrderHistory", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<ServiceOrderImageEntity> images = new ArrayList<>();
+
+    public ServiceOrderHistoryEntity(ServiceOrderEntity serviceOrder, @Valid CreateServiceOrderHistoryDTO serviceOrderHistoryData,
+                                     UserEntity author) {
+        this.serviceOrder = serviceOrder;
+        this.serviceOrder.setStatus(serviceOrderHistoryData.status());
+        this.status = serviceOrderHistoryData.status();
+        this.notes = serviceOrderHistoryData.notes();
+        this.changedBy = author;
+        this.changedBySnapshot = author.getPerson().getFirstName() + " " + author.getPerson().getLastName() + " "  + author.getPerson().getEmail();
+    }
 }
